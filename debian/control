@@ -1,0 +1,16 @@
+Source: pyschema
+Section: libs
+Priority: extra
+Maintainer: Elias Freider <freider@spotify.com>
+Build-Depends:	debhelper (>= 7),
+		python-all (>= 2.6.6-3~),
+		python-simplejson,
+Standards-Version: 3.7.3
+X-Python-Version: >= 2.6
+
+Package: pyschema
+Architecture: all
+Depends: ${shlibs:Depends},
+	 	 ${misc:Depends},
+	 	 ${python:Depends},
+Description: Schema definition and serialisation library

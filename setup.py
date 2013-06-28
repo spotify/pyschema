@@ -24,6 +24,7 @@ setup(
     author='Elias Freider',
     author_email='freider@spotify.com',
     packages=[
-        'pyschema'
+        'pyschema',
+        'pyschema.contrib'
     ]
 )

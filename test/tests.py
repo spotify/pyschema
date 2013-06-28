@@ -33,7 +33,7 @@ class TestSubRecord(RevertDefinitionsTest):
             bin = Blob()
 
         class MyRecord(Record):
-            a_string = String()
+            a_string = Text()
             a_float = Float()
             record = List(SubRecord(Foo))
 

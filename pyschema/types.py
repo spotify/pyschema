@@ -16,7 +16,7 @@ from core import Field, ParseException
 import binascii
 
 
-class String(Field):
+class Text(Field):
     def load(self, obj):
         if not isinstance(obj, unicode):
             raise ParseException("%r not a unicode object" % obj)
@@ -47,7 +47,7 @@ class Blob(Field):
 
 
 class List(Field):
-    def __init__(self, field_type=String, *args, **kwargs):
+    def __init__(self, field_type=Text, *args, **kwargs):
         super(List, self).__init__(*args, **kwargs)
         self.field_type = field_type
 
@@ -59,7 +59,7 @@ class List(Field):
 
 
 class Enum(Field):
-    field_type = String()  # don't change
+    field_type = Text()  # don't change
 
     def __init__(self, values, *args, **kwargs):
         super(Enum, self).__init__(*args, **kwargs)
@@ -129,6 +129,3 @@ class SubRecord(Field):
 
     def load(self, obj):
         return self._record_class._from_json_compatible(obj)
-
-
-# End of field type declarations

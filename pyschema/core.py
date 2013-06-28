@@ -82,6 +82,9 @@ class RecordStore(object):
         r._recordmap = self._recordmap.copy()
         return r
 
+    def __contains__(self, record_class):
+        return record_class in self._recordmap.values()
+
 
 class Field(object):
     __metaclass__ = ABCMeta
@@ -148,6 +151,27 @@ def enable_auto_register():
     RecordMetaclass.auto_register = True
 
 
+def no_auto_store():
+    """ Decorator factory used to temporarily disable automatic registration of records in the auto_store
+
+    >>> @no_auto_store()
+    >>> def MyRecord(Record)
+    >>>    pass
+
+    >>> MyRecord in auto_store
+    False
+
+    """
+    original_auto_register = RecordMetaclass.auto_register
+    disable_auto_register()
+
+    def decorator(cls):
+        RecordMetaclass.auto_register = original_auto_register
+        return cls
+    return decorator
+
+
+@no_auto_store()
 class Record(object):
     """Abstract base class for structured logging records"""
     __metaclass__ = RecordMetaclass

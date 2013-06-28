@@ -28,7 +28,7 @@ class RevertDefinitionsTest(TestCase):
 
 
 class TestSubRecord(RevertDefinitionsTest):
-    def test_foo(self):
+    def test_full_circle(self):
         class Foo(Record):
             bin = Blob()
 
@@ -46,3 +46,8 @@ class TestSubRecord(RevertDefinitionsTest):
         self.assertEquals(reloaded_obj.a_string, u"hej")
         self.assertTrue(reloaded_obj.a_float is None)
         self.assertTrue(reloaded_obj.record[0].bin, "bar")
+
+
+class TestBaseRecordNotInStore(TestCase):
+    def test(self):
+        self.assertNotIn(Record, pyschema.core.auto_store)

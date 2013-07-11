@@ -106,6 +106,26 @@ class Field(object):
     def load(self, obj):
         pass
 
+    @classmethod
+    def mixin(cls, method_or_name):
+        """Shortcut decorator for assigning a mixin methods to an existing field type
+
+        Example:
+
+        @Integer.mixin
+        def postgres_type(self):
+            return 'INT'
+
+        Equivalent to:
+
+        def postgres_type(self):
+            return 'INT'
+
+        Integer.postgres_type = postgres_type
+
+        """
+        setattr(cls, method_or_name.__name__, method_or_name)
+
 
 auto_store = RecordStore()
 

@@ -107,8 +107,8 @@ class Field(object):
         pass
 
     @classmethod
-    def mixin(cls, method_or_name):
-        """Shortcut decorator for assigning a mixin methods to an existing field type
+    def mixin(cls, method):
+        """Shortcut decorator for assigning a mixin methods or properties to an existing field type
 
         Example:
 
@@ -124,7 +124,12 @@ class Field(object):
         Integer.postgres_type = postgres_type
 
         """
-        setattr(cls, method_or_name.__name__, method_or_name)
+        if isinstance(method, property):
+            method_name = method.fget.__name__
+        else:
+            method_name = method.__name__
+        setattr(cls, method_name, method)
+        return method
 
 
 auto_store = RecordStore()
@@ -182,11 +187,11 @@ def no_auto_store():
     False
 
     """
-    original_auto_register = RecordMetaclass.auto_register
+    original_auto_register_value = RecordMetaclass.auto_register
     disable_auto_register()
 
     def decorator(cls):
-        RecordMetaclass.auto_register = original_auto_register
+        RecordMetaclass.auto_register = original_auto_register_value
         return cls
     return decorator
 

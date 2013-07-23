@@ -50,4 +50,4 @@ class TestSubRecord(RevertDefinitionsTest):
 
 class TestBaseRecordNotInStore(TestCase):
     def test(self):
-        self.assertNotIn(Record, pyschema.core.auto_store)
+        self.assertTrue(Record not in pyschema.core.auto_store)

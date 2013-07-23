@@ -1,4 +1,4 @@
-# Copyright (c) 2012 Spotify AB
+# Copyright (c) 2013 Spotify AB
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
 # use this file except in compliance with the License. You may obtain a copy of
@@ -47,7 +47,7 @@ class Blob(Field):
 
 
 class List(Field):
-    def __init__(self, field_type=Text, *args, **kwargs):
+    def __init__(self, field_type=Text(), *args, **kwargs):
         super(List, self).__init__(*args, **kwargs)
         self.field_type = field_type
 

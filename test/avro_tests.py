@@ -1,4 +1,4 @@
-import unittest
+from common import BaseTest
 from pyschema import Record
 from pyschema.types import Boolean, Integer, Float, Blob, Text, Enum, List
 from pyschema.contrib import avro
@@ -33,19 +33,7 @@ hand_crafted_schema_dict = {
 }
 
 
-class TestAvro(unittest.TestCase):
-    def recursive_compare(self, node1, node2):
-        if isinstance(node1, dict):
-            for k, v1 in node1.iteritems():
-                v2 = node2[k]
-                self.recursive_compare(v1, v2)
-        elif isinstance(node1, list):
-            for i, v1 in enumerate(node1):
-                v2 = node2[i]
-                self.recursive_compare(v1, v2)
-        else:
-            self.assertEquals(node1, node2)
-
+class TestAvro(BaseTest):
     def test_avro_schema(self):
         schema = avro.get_schema_dict(SomeAvroRecord)
         pprint(schema)

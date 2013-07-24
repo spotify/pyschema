@@ -274,33 +274,66 @@ class Record(object):
         return cls(**kwargs)
 
 
-def _load_json_dct(dct, record_store=None):
-    if record_store is None:
-        record_store = auto_store
-    record_name = dct.pop("$record_name")
-    try:
-        record_class = record_store.get(record_name)
-    except KeyError:
-        raise ParseException(
-            "Can't recognize record type %r"
-            % (record_name,), record_name)
+def _load_json_dct(dct, record_store=None, record_class=None):
+    """ Create a Record instance from a json-compatible dictionary
+
+    The dictionary values should have types that are json compatible, as if just loaded from a json serialized record string.
+
+    :param dct:
+    Python dictionary with key/value pairs for the record
+
+    :param record_store:
+    Record store to use for schema lookups (when $record_name field is present)
+
+    :param record_class:
+    PySchema Record class for the record to load. This will override any $record_name fields specified in `dct`
+
+    """
+    if record_class is None:
+        if record_store is None:
+            record_store = auto_store
+        try:
+            record_name = dct.pop("$record_name")
+        except KeyError:
+            raise ParseException(
+                "Serialized record missing '$record_name' record identifier and no record_class supplied"
+            )
+        try:
+            record_class = record_store.get(record_name)
+        except KeyError:
+            raise ParseException(
+                "Can't recognize record type %r"
+                % (record_name,), record_name)
 
     record = record_class._from_json_compatible(dct)
     return record
 
 
-def loads(line, record_store=None):
-    if not isinstance(line, unicode):
-        line = line.decode('utf8')
-    if line.startswith(u"{"):
-        json_dct = json.loads(line)
-        return _load_json_dct(json_dct, record_store)
+def loads(s, record_store=None, record_class=None):
+    """ Create a Record instance from a json serialized dictionary
+
+    :param s:
+    String with a json-serialized dictionary
+
+    :param record_store:
+    Record store to use for schema lookups (when $record_name field is present)
+
+    :param record_class:
+    PySchema Record class for the record to load. This will override any $record_name fields specified in `s`
+
+    """
+    if not isinstance(s, unicode):
+        s = s.decode('utf8')
+    if s.startswith(u"{"):
+        json_dct = json.loads(s)
+        return _load_json_dct(json_dct, record_store, record_class)
     else:
         raise ParseException("Not a json record")
 
 
-def dumps(obj):
+def dumps(obj, attach_record_name=True):
     json_dct = obj._to_json_compatible()
-    json_dct["$record_name"] = obj._record_name
+    if attach_record_name:
+        json_dct["$record_name"] = obj._record_name
     json_string = json.dumps(json_dct)
     return json_string

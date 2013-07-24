@@ -32,6 +32,8 @@ class TestSubRecord(RevertDefinitionsTest):
         class Foo(Record):
             bin = Blob()
 
+        self.assertTrue(issubclass(Foo, Record))
+
         class MyRecord(Record):
             a_string = Text()
             a_float = Float()

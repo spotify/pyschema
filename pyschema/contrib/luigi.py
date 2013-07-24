@@ -13,7 +13,7 @@
 # the License.
 
 import sys
-from core import dumps, loads, ParseException
+from pyschema.core import dumps, loads, ParseException
 
 
 def mr_reader(job, input_stream):
@@ -36,3 +36,25 @@ def mr_writer(job, outputs, output_stream, stderr=sys.stderr):
         except ParseException, e:
             print >> stderr, e
             raise
+
+
+def typeless_mr_writer(job, outputs, output_stream, stderr=sys.stderr):
+    """ Like `mr_writer` but doesn't include the schema identifying $record_name field
+
+    Can be used as job.writer in luigi.hadoop.JobTask
+    """
+    for output in outputs:
+        try:
+            print >> output_stream, dumps(output, attach_record_name=False)
+        except ParseException, e:
+            print >> stderr, e
+            raise
+
+
+def typed_mr_reader(record_class):
+    """ Function factory for an mr_reader that enforces the record class to `record_class`. Because of that, serialized input records don't have to contain $record_name entires.
+        """
+    def mr_reader(job, input_stream):
+        for line in input_stream:
+            yield loads(line, record_class=record_class),
+    return mr_reader

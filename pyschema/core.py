@@ -135,7 +135,7 @@ class Field(object):
 auto_store = RecordStore()
 
 
-class RecordMetaclass(ABCMeta):
+class PySchema(ABCMeta):
     """Metaclass for Records
 
     Builds schema on Record declaration and remembers Record types
@@ -169,11 +169,11 @@ class RecordMetaclass(ABCMeta):
 
 
 def disable_auto_register():
-    RecordMetaclass.auto_register = False
+    PySchema.auto_register = False
 
 
 def enable_auto_register():
-    RecordMetaclass.auto_register = True
+    PySchema.auto_register = True
 
 
 def no_auto_store():
@@ -187,11 +187,11 @@ def no_auto_store():
     False
 
     """
-    original_auto_register_value = RecordMetaclass.auto_register
+    original_auto_register_value = PySchema.auto_register
     disable_auto_register()
 
     def decorator(cls):
-        RecordMetaclass.auto_register = original_auto_register_value
+        PySchema.auto_register = original_auto_register_value
         return cls
     return decorator
 
@@ -199,7 +199,7 @@ def no_auto_store():
 @no_auto_store()
 class Record(object):
     """Abstract base class for structured logging records"""
-    __metaclass__ = RecordMetaclass
+    __metaclass__ = PySchema
 
     def __init__(self, *args, **kwargs):
         if args:
@@ -272,6 +272,21 @@ class Record(object):
                 kwargs[field_name] = field_type.load(dct[field_name])
 
         return cls(**kwargs)
+
+
+def ispyschema(schema):
+    """ Type checker for that will return True when schema is a subclass of Record
+    i.e. NOT when schema is an _instance_ of a Record subclass
+
+    class MyRecord(Record):
+        pass
+
+    >>> ispyschema(MyRecord)
+    True
+    >>> ispyschema(MyRecord())
+    False
+    """
+    return isinstance(schema, PySchema)
 
 
 def _load_json_dct(dct, record_store=None, record_class=None):

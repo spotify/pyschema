@@ -13,7 +13,7 @@
 # the License.
 
 from unittest import TestCase
-from pyschema import Record, dumps, loads
+from pyschema import Record, dumps, loads, ispyschema
 from pyschema.types import *
 import pyschema.core
 
@@ -32,7 +32,9 @@ class TestSubRecord(RevertDefinitionsTest):
         class Foo(Record):
             bin = Blob()
 
+        self.assertTrue(ispyschema(Foo))
         self.assertTrue(issubclass(Foo, Record))
+        self.assertTrue(isinstance(Foo, pyschema.core.PySchema))
 
         class MyRecord(Record):
             a_string = Text()

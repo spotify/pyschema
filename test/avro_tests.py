@@ -1,6 +1,6 @@
 from common import BaseTest
 from pyschema import Record
-from pyschema.types import Boolean, Integer, Float, Blob, Text, Enum, List
+from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 from pyschema.contrib import avro
 from pprint import pprint
 import simplejson as json
@@ -9,7 +9,7 @@ import simplejson as json
 class SomeAvroRecord(Record):
     a = Text()
     b = Integer()
-    c = Blob()
+    c = Bytes()
     d = Boolean()
     e = Float()
     f = Enum([

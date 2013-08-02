@@ -18,7 +18,7 @@
 Example:
 
 class Foo(Record):
-    bin = Blob()
+    bin = Bytes()
 
 
 class MyRecord(Record):

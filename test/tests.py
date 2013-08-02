@@ -30,7 +30,7 @@ class RevertDefinitionsTest(TestCase):
 class TestSubRecord(RevertDefinitionsTest):
     def test_full_circle(self):
         class Foo(Record):
-            bin = Blob()
+            bin = Bytes()
 
         self.assertTrue(ispyschema(Foo))
         self.assertTrue(issubclass(Foo, Record))

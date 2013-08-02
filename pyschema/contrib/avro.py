@@ -28,14 +28,14 @@ Usage:
 
 """
 
-from pyschema.types import Boolean, Integer, Float, Blob, Text, Enum, List
+from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 import simplejson as json
 
 
 Boolean._avro_spec = {"type": "boolean"}
 Integer._avro_spec = {"type": "long"}
 Float._avro_spec = {"type": "double"}
-Blob._avro_spec = {"type": "bytes"}
+Bytes._avro_spec = {"type": "bytes"}
 Text._avro_spec = {"type": "string"}
 
 

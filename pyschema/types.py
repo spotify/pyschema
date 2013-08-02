@@ -34,21 +34,41 @@ class Text(Field):
                 )
 
 
-class Blob(Field):
+class Bytes(Field):
     """Binary data"""
 
-    def load(self, obj):
-        return binascii.a2b_base64(obj.encode('ascii'))
+    def __init__(self, human_readable=False, **kwargs):
+        super(Bytes, self).__init__(**kwargs)
+        self.human_readable = human_readable
 
-    def dump(self, obj):
-        if isinstance(obj, unicode):
-            obj = obj.encode('ascii')
-        return binascii.b2a_base64(obj)
+    def _load_utf8_codepoints(self, obj):
+        return obj.encode("iso-8859-1")
+
+    def _dump_utf8_codepoints(self, binary_data):
+        return binary_data.decode("iso-8859-1")
+
+    def _load_b64(self, obj):
+        return binascii.a2b_base64(obj.encode("ascii"))
+
+    def _dump_b64(self, binary_data):
+        return binascii.b2a_base64(binary_data).rstrip('\n')
+
+    def load(self, obj):
+        if self.human_readable:
+            return self._load_utf8_codepoints(obj)
+        return self._load_b64(obj)
+
+    def dump(self, binary_data):
+        if isinstance(binary_data, unicode):
+            raise ValueError("Unicode objects are not accepted values for Bytes (%r)" % (binary_data,))
+        if self.human_readable:
+            return self._dump_utf8_codepoints(binary_data)
+        return self._dump_b64(binary_data)
 
 
 class List(Field):
-    def __init__(self, field_type=Text(), *args, **kwargs):
-        super(List, self).__init__(*args, **kwargs)
+    def __init__(self, field_type=Text(), **kwargs):
+        super(List, self).__init__(**kwargs)
         self.field_type = field_type
 
     def load(self, obj):
@@ -61,8 +81,8 @@ class List(Field):
 class Enum(Field):
     field_type = Text()  # don't change
 
-    def __init__(self, values, *args, **kwargs):
-        super(Enum, self).__init__(*args, **kwargs)
+    def __init__(self, values, **kwargs):
+        super(Enum, self).__init__(**kwargs)
         self.values = set(values)
 
     def dump(self, obj):
@@ -117,8 +137,8 @@ class SubRecord(Field):
     "Field for storing :class:`record.Record`s as fields "
     "in other :class:`record.Record`s"
 
-    def __init__(self, record_class, *args, **kwargs):
-        super(SubRecord, self).__init__(*args, **kwargs)
+    def __init__(self, record_class, **kwargs):
+        super(SubRecord, self).__init__(**kwargs)
         self._record_class = record_class
 
     def dump(self, obj):

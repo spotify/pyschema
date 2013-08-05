@@ -12,14 +12,15 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from core import Field, ParseException
+import core
+from core import ParseError, Field
 import binascii
 
 
 class Text(Field):
     def load(self, obj):
         if not isinstance(obj, unicode):
-            raise ParseException("%r not a unicode object" % obj)
+            raise ParseError("%r not a unicode object" % obj)
         return obj
 
     def dump(self, obj):
@@ -29,7 +30,7 @@ class Text(Field):
             try:
                 return obj.decode('utf8')
             except:
-                raise ParseException(
+                raise ParseError(
                     "%r is not a valid UTF-8 string" % obj
                 )
 
@@ -95,7 +96,7 @@ class Enum(Field):
     def load(self, obj):
         parsed = self.field_type.load(obj)
         if parsed not in self.values:
-            raise ParseException(
+            raise ParseError(
                 "Parsed value %r not in allowed value of Enum(%r)"
                 % (parsed, tuple(self.values)))
         return parsed
@@ -103,7 +104,7 @@ class Enum(Field):
 
 class Integer(Field):
     def dump(self, obj):
-        if not isinstance(obj, int):
+        if not isinstance(obj, (int, type(None))):
             raise ValueError("%r is not a valid Integer" % (obj,))
         return obj
 
@@ -117,7 +118,7 @@ class Boolean(Field):
 
     def dump(self, obj):
         if obj not in self.VALUE_MAP:
-            raise ParseException(
+            raise ParseError(
                 "Invalid value for Boolean field: %r" % obj)
         return bool(obj)
 
@@ -143,9 +144,9 @@ class SubRecord(Field):
 
     def dump(self, obj):
         if not isinstance(obj, self._record_class):
-            raise ParseException("%r is not a %r"
-                                 % (obj, self._record_class))
-        return obj._to_json_compatible()
+            raise ParseError("%r is not a %r"
+                             % (obj, self._record_class))
+        return core.to_json_compatible(obj)
 
     def load(self, obj):
-        return self._record_class._from_json_compatible(obj)
+        return core.from_json_compatible(self._record_class, obj)

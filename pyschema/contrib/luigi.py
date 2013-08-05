@@ -13,7 +13,7 @@
 # the License.
 
 import sys
-from pyschema.core import dumps, loads, ParseException
+from pyschema.core import dumps, loads, ParseError
 
 
 def mr_reader(job, input_stream):
@@ -33,7 +33,7 @@ def mr_writer(job, outputs, output_stream, stderr=sys.stderr):
     for output in outputs:
         try:
             print >> output_stream, dumps(output)
-        except ParseException, e:
+        except ParseError, e:
             print >> stderr, e
             raise
 
@@ -46,7 +46,7 @@ def typeless_mr_writer(job, outputs, output_stream, stderr=sys.stderr):
     for output in outputs:
         try:
             print >> output_stream, dumps(output, attach_record_name=False)
-        except ParseException, e:
+        except ParseError, e:
             print >> stderr, e
             raise
 
@@ -58,3 +58,4 @@ def typed_mr_reader(record_class):
         for line in input_stream:
             yield loads(line, record_class=record_class),
     return mr_reader
+

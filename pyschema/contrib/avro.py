@@ -28,31 +28,38 @@ Usage:
 
 """
 
-from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
+from pyschema.types import Field, Boolean, Integer, Float, Bytes, Text, Enum, List
 import simplejson as json
 
 
-Boolean._avro_spec = {"type": "boolean"}
-Integer._avro_spec = {"type": "long"}
-Float._avro_spec = {"type": "double"}
-Bytes._avro_spec = {"type": "bytes"}
-Text._avro_spec = {"type": "string"}
+Boolean._avro_type = "boolean"
+Integer._avro_type = "long"
+Float._avro_type = "double"
+Bytes._avro_type = "bytes"
+Text._avro_type = "string"
+
+
+@Field.mixin
+def _avro_spec(self):
+    return {"type": [self._avro_type, "null"]}
+
+
+@Field.mixin
+def avro_json(self, s):
+    return {self._avro_type: self.dump(s)}
 
 
 @List.mixin
-@property
 def _avro_spec(self):
-    field_spec = self.field_type._avro_spec
-    # currently only supports simple types in arrays...
-    assert len(field_spec) == 1 and isinstance(field_spec["type"], basestring)
+    # TODO: support complex types
+    field_avro_type = self.field_type._avro_type
     return {
         "type": "array",
-        "items": field_spec["type"]
+        "items": field_avro_type
     }
 
 
 @Enum.mixin
-@property
 def _avro_spec(self):
     return {
         "type": "enum",
@@ -70,7 +77,7 @@ def get_schema_dict(record):
         field_spec = {
             "name": field_name,
         }
-        field_spec.update(field_type._avro_spec)
+        field_spec.update(field_type._avro_spec())
         avro_fields.append(field_spec)
 
     avro_record["fields"] = avro_fields

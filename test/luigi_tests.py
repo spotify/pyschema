@@ -57,7 +57,7 @@ class TestMRWriter(BaseTest):
 
     def test_typeless_mr_writer(self):
         writer = pyschema.contrib.luigi.typeless_mr_writer
-        self.assertRaises(pyschema.ParseException, lambda: self._generic_writer_tests(writer))
+        self.assertRaises(pyschema.ParseError, lambda: self._generic_writer_tests(writer))
         output_lines, output_records = self._generic_writer_tests(writer, FooRecord)
         obj = json.loads(output_lines[0])
         self.recursive_compare(

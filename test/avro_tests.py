@@ -1,7 +1,7 @@
 from common import BaseTest
 from pyschema import Record
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
-from pyschema.contrib import avro
+import pyschema.contrib.avro
 from pprint import pprint
 import simplejson as json
 
@@ -22,11 +22,11 @@ hand_crafted_schema_dict = {
     "type": "record",
     "name": "SomeAvroRecord",
     "fields": [
-        {"name": "a", "type": "string"},
-        {"name": "b", "type": "long"},
-        {"name": "c", "type": "bytes"},
-        {"name": "d", "type": "boolean"},
-        {"name": "e", "type": "double"},
+        {"name": "a", "type": ["string", "null"]},
+        {"name": "b", "type": ["long", "null"]},
+        {"name": "c", "type": ["bytes", "null"]},
+        {"name": "d", "type": ["boolean", "null"]},
+        {"name": "e", "type": ["double", "null"]},
         {"name": "f", "type": "enum", "symbols": ["FOO", "bar"]},
         {"name": "g", "type": "array", "items": "string"},
     ]
@@ -35,8 +35,7 @@ hand_crafted_schema_dict = {
 
 class TestAvro(BaseTest):
     def test_avro_schema(self):
-        schema = avro.get_schema_dict(SomeAvroRecord)
-        pprint(schema)
+        schema = pyschema.contrib.avro.get_schema_dict(SomeAvroRecord)
         fields = schema["fields"]
         names = tuple(x["name"] for x in fields)
         self.assertEquals(
@@ -47,7 +46,21 @@ class TestAvro(BaseTest):
         self.assertEquals(schema["name"], "SomeAvroRecord")
 
     def test_roundtrip(self):
-        schema_string = avro.get_schema_string(SomeAvroRecord)
+        schema_string = pyschema.contrib.avro.get_schema_string(SomeAvroRecord)
         schema_dict = json.loads(schema_string)
-        self.recursive_compare(schema_dict, hand_crafted_schema_dict)
-        self.recursive_compare(hand_crafted_schema_dict, schema_dict)
+        try:
+            self.recursive_compare(schema_dict, hand_crafted_schema_dict)
+            self.recursive_compare(hand_crafted_schema_dict, schema_dict)
+        except:
+            print "Intended:", hand_crafted_schema_dict
+            print "Output:", schema_dict
+            raise
+
+
+# if the avro package is installed, also include avro integration tests
+try:
+    __import__("avro")
+except ImportError:
+    pass
+else:
+    from _avro_tests import *

@@ -85,7 +85,7 @@ class LuigiOfflineMRTests(BaseTest):
         luigi.build([task], local_scheduler=True)
         for line in task.output().open('r'):
             self.assertTrue("$record_name" not in line)
-            self.assertRaises(pyschema.ParseException, lambda: pyschema.loads(line))
+            self.assertRaises(pyschema.ParseError, lambda: pyschema.loads(line))
             rec = pyschema.loads(line, record_class=OutputRecord)
             self.assertEquals(rec.foo, u"yay")
             self.assertEquals(rec.barsum, 5)

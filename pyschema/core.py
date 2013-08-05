@@ -43,7 +43,7 @@ except:
 import warnings
 
 
-class ParseException(Exception):
+class ParseError(Exception):
     """ Generic exception type for Record parse errors """
     pass
 
@@ -252,26 +252,26 @@ class Record(object):
     def __ne__(self, other):
         return self.__cmp__(other) != 0
 
-    # TODO: refactor so Record and Fields themselves are serialization-agnostic
-    def _to_json_compatible(self):
-        "Dump record in json-encodable object format"
-        d = {}
-        for fname, f in self._schema:
-            val = getattr(self, fname)
-            if val is not None:
-                d[fname] = f.dump(val)
-        return d
 
-    @classmethod
-    def _from_json_compatible(cls, dct):
-        "Load from json-encodable"
-        kwargs = {}
-        schema = cls._schema
-        for field_name, field_type in schema:
-            if field_name in dct:
-                kwargs[field_name] = field_type.load(dct[field_name])
+def to_json_compatible(record):
+    "Dump record in json-encodable object format"
+    d = {}
+    for fname, f in record._schema:
+        val = getattr(record, fname)
+        if val is not None:
+            d[fname] = f.dump(val)
+    return d
 
-        return cls(**kwargs)
+
+def from_json_compatible(record_class, dct):
+    "Load from json-encodable"
+    kwargs = {}
+    schema = record_class._schema
+    for field_name, field_type in schema:
+        if field_name in dct:
+            kwargs[field_name] = field_type.load(dct[field_name])
+
+    return record_class(**kwargs)
 
 
 def ispyschema(schema):
@@ -289,7 +289,7 @@ def ispyschema(schema):
     return isinstance(schema, PySchema)
 
 
-def _load_json_dct(dct, record_store=None, record_class=None):
+def load_json_dct(dct, record_store=None, record_class=None):
     """ Create a Record instance from a json-compatible dictionary
 
     The dictionary values should have types that are json compatible, as if just loaded from a json serialized record string.
@@ -310,17 +310,17 @@ def _load_json_dct(dct, record_store=None, record_class=None):
         try:
             record_name = dct.pop("$record_name")
         except KeyError:
-            raise ParseException(
+            raise ParseError(
                 "Serialized record missing '$record_name' record identifier and no record_class supplied"
             )
         try:
             record_class = record_store.get(record_name)
         except KeyError:
-            raise ParseException(
+            raise ParseError(
                 "Can't recognize record type %r"
                 % (record_name,), record_name)
 
-    record = record_class._from_json_compatible(dct)
+    record = from_json_compatible(record_class, dct)
     return record
 
 
@@ -341,13 +341,13 @@ def loads(s, record_store=None, record_class=None):
         s = s.decode('utf8')
     if s.startswith(u"{"):
         json_dct = json.loads(s)
-        return _load_json_dct(json_dct, record_store, record_class)
+        return load_json_dct(json_dct, record_store, record_class)
     else:
-        raise ParseException("Not a json record")
+        raise ParseError("Not a json record")
 
 
 def dumps(obj, attach_record_name=True):
-    json_dct = obj._to_json_compatible()
+    json_dct = to_json_compatible(obj)
     if attach_record_name:
         json_dct["$record_name"] = obj._record_name
     json_string = json.dumps(json_dct)

@@ -27,8 +27,12 @@ hand_crafted_schema_dict = {
         {"name": "c", "type": ["bytes", "null"]},
         {"name": "d", "type": ["boolean", "null"]},
         {"name": "e", "type": ["double", "null"]},
-        {"name": "f", "type": "enum", "symbols": ["FOO", "bar"]},
-        {"name": "g", "type": "array", "items": "string"},
+        {"name": "f", "type": [{
+            "type": "enum",
+            "name": "ENUM",
+            "symbols": ["FOO", "bar"]
+        }, "null"]},
+        {"name": "g", "type": {"type": "array", "items": "string"}}
     ]
 }
 
@@ -53,7 +57,7 @@ class TestAvro(BaseTest):
             self.recursive_compare(hand_crafted_schema_dict, schema_dict)
         except:
             print "Intended:", hand_crafted_schema_dict
-            print "Output:", schema_dict
+            print "    Output:", schema_dict
             raise
 
 

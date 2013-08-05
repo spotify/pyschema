@@ -54,16 +54,24 @@ def _avro_spec(self):
     # TODO: support complex types
     field_avro_type = self.field_type._avro_type
     return {
-        "type": "array",
-        "items": field_avro_type
+        "type": {
+            "type": "array",
+            "items": field_avro_type
+        }  # don't allow None in list types, use empty lists instead
     }
 
 
 @Enum.mixin
 def _avro_spec(self):
     return {
-        "type": "enum",
-        "symbols": list(self.values)
+        "type": [
+            {
+                "type": "enum",
+                "name": "ENUM",  # FIXME: don't know what to do with this, but enum name is required in avro
+                "symbols": list(self.values)
+            },
+            "null"
+        ]
     }
 
 

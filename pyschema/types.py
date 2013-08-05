@@ -19,12 +19,12 @@ import binascii
 
 class Text(Field):
     def load(self, obj):
-        if not isinstance(obj, unicode):
+        if not isinstance(obj, (unicode, type(None))):
             raise ParseError("%r not a unicode object" % obj)
         return obj
 
     def dump(self, obj):
-        if isinstance(obj, unicode):
+        if isinstance(obj, (unicode, type(None))):
             return obj
         else:
             try:
@@ -80,7 +80,7 @@ class List(Field):
 
 
 class Enum(Field):
-    field_type = Text()  # don't change
+    _field_type = Text()  # don't change
 
     def __init__(self, values, **kwargs):
         super(Enum, self).__init__(**kwargs)
@@ -91,11 +91,11 @@ class Enum(Field):
             raise ValueError(
                 "%r is not an allowed value of Enum%r"
                 % (obj, tuple(self.values)))
-        return self.field_type.dump(obj)
+        return self._field_type.dump(obj)
 
     def load(self, obj):
-        parsed = self.field_type.load(obj)
-        if parsed not in self.values:
+        parsed = self._field_type.load(obj)
+        if parsed not in self.values and parsed is not None:
             raise ParseError(
                 "Parsed value %r not in allowed value of Enum(%r)"
                 % (parsed, tuple(self.values)))

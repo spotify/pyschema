@@ -289,7 +289,7 @@ def ispyschema(schema):
     return isinstance(schema, PySchema)
 
 
-def load_json_dct(dct, record_store=None, record_class=None):
+def load_json_dct(dct, record_store=None, record_class=None, loader=from_json_compatible):
     """ Create a Record instance from a json-compatible dictionary
 
     The dictionary values should have types that are json compatible, as if just loaded from a json serialized record string.
@@ -320,11 +320,11 @@ def load_json_dct(dct, record_store=None, record_class=None):
                 "Can't recognize record type %r"
                 % (record_name,), record_name)
 
-    record = from_json_compatible(record_class, dct)
+    record = loader(record_class, dct)
     return record
 
 
-def loads(s, record_store=None, record_class=None):
+def loads(s, record_store=None, record_class=None, loader=from_json_compatible):
     """ Create a Record instance from a json serialized dictionary
 
     :param s:
@@ -341,7 +341,7 @@ def loads(s, record_store=None, record_class=None):
         s = s.decode('utf8')
     if s.startswith(u"{"):
         json_dct = json.loads(s)
-        return load_json_dct(json_dct, record_store, record_class)
+        return load_json_dct(json_dct, record_store, record_class, loader)
     else:
         raise ParseError("Not a json record")
 

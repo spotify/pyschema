@@ -100,7 +100,7 @@ def get_schema_dict(record):
         field_spec.update(field_type._avro_spec())
         avro_fields.append(field_spec)
 
-    avro_record["fields"] = sorted(avro_fields, key=lambda x: x["name"])
+    avro_record["fields"] = avro_fields
     return avro_record
 
 
@@ -109,6 +109,11 @@ def get_schema_string(record):
 
 
 def to_json_compatible(record):
+    """ WARNING: because dictionaries aren't ordered, the output of this will
+    not necessarily be compatible with json avro-readers that assume ordered fields
+
+    Use OrderedPySchemaJsonEncoder to encode Records to avro json
+    """
     d = {}
     for fname, f in record._schema:
         val = getattr(record, fname)
@@ -116,11 +121,38 @@ def to_json_compatible(record):
     return d
 
 
+class OrderedPySchemaJsonEncoder(json.JSONEncoder):
+    """ Custom JSONEncoder for preserving field order
+    in serialized json strings (from schema definition)
+
+    This is required by some configurations of the java Avro JsonDecoder
+    """
+    def encode_record(self, record):
+        string_parts = []
+        for name, fieldtype in record._schema:
+            value = getattr(record, name)
+            string_parts.append(''.join((
+                self.encode(name),
+                self.key_separator,
+                self.encode(fieldtype.avro_dump(value))
+            )))
+        return ''.join((
+            '{',
+            self.item_separator.join(string_parts),
+            '}'
+        ))
+
+    def encode(self, x):
+        if isinstance(x, core.Record):
+            return self.encode_record(x)
+        return super(OrderedPySchemaJsonEncoder, self).encode(x)
+
+
+ordered_json_encoder = OrderedPySchemaJsonEncoder()
+
+
 def dumps(record):
-    return json.dumps(
-        to_json_compatible(record),
-        sort_keys=True
-    )
+    return ordered_json_encoder.encode(record)
 
 
 def from_json_compatible(record_class, dct):

@@ -1,3 +1,17 @@
+# Copyright (c) 2013 Spotify AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
 from unittest import TestCase
 import avro.schema
 from avro.datafile import DataFileReader, DataFileWriter
@@ -8,6 +22,14 @@ from pyschema.types import Text, Integer, List, Enum
 import pyschema.contrib.avro
 from cStringIO import StringIO
 
+
+"""
+NOTICE:
+It's a bit ugly to rely on `core.to_json_compatible`
+when writing records using the python avro implementation
+as that is not what it's been built for, but it seems
+to be compatible as opposed to the avro json format
+"""
 
 class RealAvroTest(TestCase):
     def test_avrofile_roundtrip(self):
@@ -26,7 +48,7 @@ class RealAvroTest(TestCase):
 
         pychema_avro = pyschema.contrib.avro.get_schema_string(Foo)
         avro_schema = avro.schema.parse(pychema_avro)
-        print avro_schema
+
         avro_file = StringIO()
         writer = DataFileWriter(avro_file, DatumWriter(), avro_schema)
 
@@ -35,7 +57,6 @@ class RealAvroTest(TestCase):
             Foo(txt=u"Bar"),
         )
         for ir in input_records:
-            print pyschema.core.to_json_compatible(ir)
             writer.append(pyschema.core.to_json_compatible(ir))
         writer.flush()
 

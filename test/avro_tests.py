@@ -1,8 +1,21 @@
+# Copyright (c) 2013 Spotify AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+
 from common import BaseTest
-from pyschema import Record
+from pyschema import Record, no_auto_store
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 import pyschema.contrib.avro
-from pprint import pprint
 import simplejson as json
 
 
@@ -79,6 +92,21 @@ class TestAvro(BaseTest):
         self.assertEquals(new_s.e, 0.1)
         self.assertEquals(new_s.f, u"FOO")
         self.assertEquals(tuple(new_s.g), (u"wtf", u"bbq"))
+
+    def test_preserve_field_order(self):
+        @no_auto_store()
+        class AvroRecord(Record):
+            c = Float()
+            a = Text()
+            b = Integer()
+
+        ar = AvroRecord(
+            a="foo",
+            b=4,
+            c=1.0
+        )
+        serialized = pyschema.contrib.avro.dumps(ar)
+        self.assertTrue(serialized.find('"c"') < serialized.find('"a"') < serialized.find('"b"'))
 
 # if the avro package is installed, also include avro integration tests
 try:

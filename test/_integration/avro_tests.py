@@ -13,6 +13,7 @@
 # the License.
 
 from unittest import TestCase
+import subprocess
 import avro.schema
 from avro.datafile import DataFileReader, DataFileWriter
 from avro.io import DatumReader, DatumWriter
@@ -30,6 +31,32 @@ when writing records using the python avro implementation
 as that is not what it's been built for, but it seems
 to be compatible as opposed to the avro json format
 """
+
+# TODO: find installed avro-tools if one exists
+avro_tools_path = ".../avro-tools-1.7.4.jar"  # change to path to avro-tools jar
+
+def valid_json_avro(schema, json_record):
+    cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    p.stdin.write(json_record)
+    p.stdin.close()
+    return not p.wait()
+
+
+class TestExternalValidation(TestCase):
+    def test_string_list(self):
+        @pyschema.no_auto_store()
+        class ListRecord(pyschema.Record):
+            l = List(Text())
+        
+        schema = pyschema.contrib.avro.get_schema_string(ListRecord)
+        json_record = pyschema.contrib.avro.dumps(
+            ListRecord(
+                l=["foo", "bar"]
+            )
+        )
+        self.assertTrue(valid_json_avro(schema, json_record))
+
 
 class RealAvroTest(TestCase):
     def test_avrofile_roundtrip(self):

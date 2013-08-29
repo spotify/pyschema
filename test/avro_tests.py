@@ -45,7 +45,7 @@ hand_crafted_schema_dict = {
             "name": "ENUM",
             "symbols": ["FOO", "bar"]
         }, "null"]},
-        {"name": "g", "type": {"type": "array", "items": "string"}}
+        {"name": "g", "type": [{"type": "array", "items": "string"}, "null"]}
     ]
 }
 
@@ -108,10 +108,26 @@ class TestAvro(BaseTest):
         serialized = pyschema.contrib.avro.dumps(ar)
         self.assertTrue(serialized.find('"c"') < serialized.find('"a"') < serialized.find('"b"'))
 
-# if the avro package is installed, also include avro integration tests
-try:
-    __import__("avro")
-except ImportError:
-    pass
-else:
-    from _avro_tests import *
+    def test_unset_list(self):
+        @no_auto_store()
+        class ListRecord(Record):
+            a = List(Text())
+
+        lr = ListRecord()
+        str_rec = pyschema.contrib.avro.dumps(lr)
+        reborn = pyschema.contrib.avro.loads(str_rec, record_class=ListRecord)
+        self.assertTrue(reborn.a is None)
+
+    def test_list_roundtrip(self):
+        @no_auto_store()
+        class ListRecord(Record):
+            a = List(Text())
+
+        lr = ListRecord(a=["c", "a", "b"])
+        str_rec = pyschema.contrib.avro.dumps(lr)
+        reborn = pyschema.contrib.avro.loads(str_rec, record_class=ListRecord)
+
+        self.assertEquals(
+            tuple(reborn.a),
+            ("c", "a", "b")
+        )

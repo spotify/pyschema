@@ -64,12 +64,3 @@ class TestMRWriter(BaseTest):
             obj,
             {"foo": "Hej", "bar": 10}
         )
-
-try:
-    import luigi
-except:
-    pass
-else:
-    # nose will execute these luigi-dependent tests
-    # only if luigi module present
-    from _luigi_mr_tests import *

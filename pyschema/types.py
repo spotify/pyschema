@@ -68,9 +68,10 @@ class Bytes(Field):
 
 
 class List(Field):
-    def __init__(self, field_type=Text(), **kwargs):
+    def __init__(self, field_type=Text(), nullable=False, **kwargs):
         super(List, self).__init__(**kwargs)
         self.field_type = field_type
+        self.nullable = nullable
 
     def load(self, obj):
         return [self.field_type.load(o) for o in obj]

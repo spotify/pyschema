@@ -62,20 +62,41 @@ def avro_load(self, o):
         return self.load(o[self._avro_type])
 
 
+### `List`/array extensions ###
 @List.mixin
 def _avro_spec(self):
-    field_avro_type = self.field_type._avro_type
-    return {
-        "type": [
-            {
-                "type": "array",
-                "items": field_avro_type
-            },
-            "null"
-        ]
+    type_spec = {
+        "type": "array",
+        "items": self.field_type._avro_type
     }
+    if self.nullable:
+        return {"type": [type_spec, "null"]}
+    else:
+        return {"type": type_spec}
 
 
+@List.mixin
+def avro_dump(self, o):
+    if o is None:
+        return None
+    else:
+        if self.nullable:
+            return {self._avro_type: self.dump(o)}
+        else:
+            return self.dump(o)
+
+
+@List.mixin
+def avro_load(self, o):
+    if o is None:
+        return None
+    else:
+        if self.nullable:
+            return self.load(o[self._avro_type])
+        else:
+            return self.load(o)
+
+### `Enum` extensions
 @Enum.mixin
 def _avro_spec(self):
     return {
@@ -90,6 +111,7 @@ def _avro_spec(self):
     }
 
 
+# Schema generation
 def get_schema_dict(record):
     avro_record = {
         "type": "record",

@@ -28,7 +28,7 @@ class SomeAvroRecord(Record):
     f = Enum([
         "FOO", "bar"
     ])
-    g = List(Text())
+    g = List(Text(), nullable=True)
 
 
 hand_crafted_schema_dict = {
@@ -84,7 +84,10 @@ class TestAvro(BaseTest):
             g=["wtf", "bbq"]
         )
         avro_string = pyschema.contrib.avro.dumps(s)
-        new_s = pyschema.contrib.avro.loads(avro_string, record_class=SomeAvroRecord)
+        new_s = pyschema.contrib.avro.loads(
+            avro_string,
+            record_class=SomeAvroRecord
+        )
         self.assertEquals(new_s.a, u"yolo")
         self.assertEquals(new_s.b, 4)
         self.assertEquals(new_s.c, chr(1))
@@ -106,7 +109,11 @@ class TestAvro(BaseTest):
             c=1.0
         )
         serialized = pyschema.contrib.avro.dumps(ar)
-        self.assertTrue(serialized.find('"c"') < serialized.find('"a"') < serialized.find('"b"'))
+        self.assertTrue(
+            serialized.find('"c"')
+            < serialized.find('"a"')
+            < serialized.find('"b"')
+        )
 
     def test_unset_list(self):
         @no_auto_store()

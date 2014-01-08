@@ -27,14 +27,14 @@ from cStringIO import StringIO
 """
 NOTICE:
 It's a bit ugly to rely on `core.to_json_compatible`
+in some of the tests below
 when writing records using the python avro implementation
 as that is not what it's been built for, but it seems
 to be compatible as opposed to the avro json format
 """
 
 # TODO: find installed avro-tools if one exists
-#avro_tools_path = ".../avro-tools-1.7.4.jar"  # change to path to avro-tools jar
-avro_tools_path = "/Users/freider/code/avro-1.7.4/lang/java/tools/target/avro-tools-1.7.4.jar"
+avro_tools_path = "/path/to/avro-tools-1.7.4.jar"  # change to path to avro-tools jar
 
 
 def valid_json_avro(schema, json_record):
@@ -75,13 +75,11 @@ class TestExternalValidation(TestCase):
     def test_integer(self):
         schema = pyschema.contrib.avro.get_schema_string(self.IntegerRecord)
         json_record = '{"i": {"long": 5}}'
-        #json_record = '{"i": {"long": 4}}'
         self.assertTrue(valid_json_avro(schema, json_record))
 
     def test_text(self):
         schema = pyschema.contrib.avro.get_schema_string(self.TextRecord)
         json_record = '{"t": {"string": "text"}}'
-        #json_record = '{"i": {"long": 4}}'
         self.assertTrue(valid_json_avro(schema, json_record))
 
 
@@ -122,6 +120,7 @@ class RealAvroTest(TestCase):
 
 
 class ComplexTypeTests(TestCase):
+    """ TODO: replace with avro-tools tests """
     def _readback(self, record):
         avro_file = StringIO()
         pychema_avro = pyschema.contrib.avro.get_schema_string(record)

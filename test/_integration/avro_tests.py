@@ -33,7 +33,9 @@ to be compatible as opposed to the avro json format
 """
 
 # TODO: find installed avro-tools if one exists
-avro_tools_path = ".../avro-tools-1.7.4.jar"  # change to path to avro-tools jar
+#avro_tools_path = ".../avro-tools-1.7.4.jar"  # change to path to avro-tools jar
+avro_tools_path = "/Users/freider/code/avro-1.7.4/lang/java/tools/target/avro-tools-1.7.4.jar"
+
 
 def valid_json_avro(schema, json_record):
     cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]
@@ -44,29 +46,53 @@ def valid_json_avro(schema, json_record):
 
 
 class TestExternalValidation(TestCase):
+    @pyschema.no_auto_store()
+    class ListRecord(pyschema.Record):
+        l = List(Text())
+
+    @pyschema.no_auto_store()
+    class IntegerRecord(pyschema.Record):
+        i = Integer()
+
+    @pyschema.no_auto_store()
+    class TextRecord(pyschema.Record):
+        t = Text()
+
     def test_string_list(self):
-        @pyschema.no_auto_store()
-        class ListRecord(pyschema.Record):
-            l = List(Text())
-        
-        schema = pyschema.contrib.avro.get_schema_string(ListRecord)
+        schema = pyschema.contrib.avro.get_schema_string(self.ListRecord)
         json_record = pyschema.contrib.avro.dumps(
-            ListRecord(
+            self.ListRecord(
                 l=["foo", "bar"]
             )
         )
         self.assertTrue(valid_json_avro(schema, json_record))
 
+    def test_string_list_record_not_union(self):
+        schema = pyschema.contrib.avro.get_schema_string(self.ListRecord)
+        json_record = '{"l": ["foo", "bar"]}'
+        self.assertTrue(valid_json_avro(schema, json_record))
+
+    def test_integer(self):
+        schema = pyschema.contrib.avro.get_schema_string(self.IntegerRecord)
+        json_record = '{"i": {"long": 5}}'
+        #json_record = '{"i": {"long": 4}}'
+        self.assertTrue(valid_json_avro(schema, json_record))
+
+    def test_text(self):
+        schema = pyschema.contrib.avro.get_schema_string(self.TextRecord)
+        json_record = '{"t": {"string": "text"}}'
+        #json_record = '{"i": {"long": 4}}'
+        self.assertTrue(valid_json_avro(schema, json_record))
+
 
 class RealAvroTest(TestCase):
     def test_avrofile_roundtrip(self):
-        """
-        Validates created schemas using official avro python library and serializes some data
+        """Validates created schemas using official avro
+
+        Uses avro python library and serializes some data
         using the python API together with pyschema functions.
 
-        TODO: test using the official avro json serialization which isn't supported by the
-        python avro library. Create a simple Java tool to pipe json into to create avro files
-        and the other way around
+        TODO: replace with avro-tools
         """
         @pyschema.no_auto_store()
         class Foo(pyschema.Record):
@@ -108,7 +134,10 @@ class ComplexTypeTests(TestCase):
         avro_file.seek(0)
         reader = DataFileReader(avro_file, DatumReader())
         for i, datum in enumerate(reader):
-            record = pyschema.core.from_json_compatible(record.__class__, datum)
+            record = pyschema.core.from_json_compatible(
+                record.__class__,
+                datum
+            )
         reader.close()
         return record
 
@@ -129,7 +158,6 @@ class ComplexTypeTests(TestCase):
             self._readback(Foo(l=[])).l
         )
 
-
     def test_enum(self):
         @pyschema.no_auto_store()
         class Foo(pyschema.Record):
@@ -145,6 +173,7 @@ class ComplexTypeTests(TestCase):
             self._readback(Foo()).e
         )
 
-        self.assertRaises(ValueError,
+        self.assertRaises(
+            ValueError,
             lambda: self._readback(Foo(e="Foo"))
         )

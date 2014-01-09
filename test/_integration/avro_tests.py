@@ -1,178 +1,194 @@
 # Copyright (c) 2013 Spotify AB
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you may not
-# use this file except in compliance with the License. You may obtain a copy of
-# the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations under
-# the License.
 
-from unittest import TestCase
+import logging
 import subprocess
-import avro.schema
-from avro.datafile import DataFileReader, DataFileWriter
-from avro.io import DatumReader, DatumWriter
-
+from unittest import TestCase
+from pyschema import Record, Text, Integer, Boolean, Bytes
+from pyschema import Float, Enum, List, SubRecord, Map
 import pyschema
-from pyschema.types import Text, Integer, List, Enum
 import pyschema.contrib.avro
-from cStringIO import StringIO
+import os.path
 
 
-"""
-NOTICE:
-It's a bit ugly to rely on `core.to_json_compatible`
-in some of the tests below
-when writing records using the python avro implementation
-as that is not what it's been built for, but it seems
-to be compatible as opposed to the avro json format
-"""
-
-# TODO: find installed avro-tools if one exists
-avro_tools_path = "/path/to/avro-tools-1.7.4.jar"  # change to path to avro-tools jar
+@pyschema.no_auto_store()
+class TextRecord(Record):
+    t = Text()
 
 
-def valid_json_avro(schema, json_record):
-    cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]
-    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    p.stdin.write(json_record)
-    p.stdin.close()
-    return not p.wait()
+@pyschema.no_auto_store()
+class IntegerRecord(Record):
+    i = Integer()
 
 
-class TestExternalValidation(TestCase):
-    @pyschema.no_auto_store()
-    class ListRecord(pyschema.Record):
-        l = List(Text())
+@pyschema.no_auto_store()
+class BooleanRecord(Record):
+    b = Boolean()
 
-    @pyschema.no_auto_store()
-    class IntegerRecord(pyschema.Record):
-        i = Integer()
 
-    @pyschema.no_auto_store()
-    class TextRecord(pyschema.Record):
-        t = Text()
+@pyschema.no_auto_store()
+class FloatRecord(Record):
+    f = Float()
 
-    def test_string_list(self):
-        schema = pyschema.contrib.avro.get_schema_string(self.ListRecord)
-        json_record = pyschema.contrib.avro.dumps(
-            self.ListRecord(
-                l=["foo", "bar"]
-            )
-        )
-        self.assertTrue(valid_json_avro(schema, json_record))
 
-    def test_string_list_record_not_union(self):
-        schema = pyschema.contrib.avro.get_schema_string(self.ListRecord)
-        json_record = '{"l": ["foo", "bar"]}'
-        self.assertTrue(valid_json_avro(schema, json_record))
+@pyschema.no_auto_store()
+class BytesRecord(Record):
+    b = Bytes()
 
-    def test_integer(self):
-        schema = pyschema.contrib.avro.get_schema_string(self.IntegerRecord)
-        json_record = '{"i": {"long": 5}}'
-        self.assertTrue(valid_json_avro(schema, json_record))
+
+@pyschema.no_auto_store()
+class EnumRecord(Record):
+    e = Enum(["FOO", "BAR"])
+
+
+@pyschema.no_auto_store()
+class ListRecord(Record):
+    l = List(Text())
+
+
+@pyschema.no_auto_store()
+class NullableListRecord(Record):
+    nl = List(Text(), nullable=True)
+
+
+@pyschema.no_auto_store()
+class SubRecordRecord(Record):
+    r = SubRecord(TextRecord)
+
+
+@pyschema.no_auto_store()
+class MapRecord(Record):
+    m = Map(Integer())
+
+
+@pyschema.no_auto_store()
+class NestedListRecord(Record):
+    l = List(SubRecord(TextRecord))
+
+
+@pyschema.no_auto_store()
+class NestedMapRecord(Record):
+    m = Map(SubRecord(TextRecord))
+
+
+avro_tools_path = "{0}/../../avro-tools-1.7.5.jar".format(
+    os.path.dirname(os.path.realpath(__file__)))
+
+
+def avro_roundtrip(record_type, record):
+    schema = pyschema.contrib.avro.get_schema_string(record_type)
+    json_record = pyschema.contrib.avro.dumps(record)
+
+    read_cmd = ["java", "-jar", avro_tools_path, "fragtojson", schema, "-"]
+    write_cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]
+    writer = subprocess.Popen(
+        write_cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE
+    )
+    reader = subprocess.Popen(
+        read_cmd,
+        stdin=writer.stdout,
+        stdout=subprocess.PIPE
+    )
+    writer.stdin.write(json_record)
+    writer.stdin.close()
+    writer_result = writer.wait()
+
+    if writer_result != 0:
+        logging.error("Error when writing record")
+        logging.error("Schema:")
+        logging.error(schema)
+        logging.error("Invalid Record:")
+        logging.error(json_record)
+        return False
+
+    reader_result = reader.wait()
+    # fragtojson outputs json without closing braces :/
+    # this might cause problems...
+    broken_json = reader.stdout.read()
+    missing_braces = sum(
+        1 if c == '{' else -1
+        for c in broken_json
+        if c in ('{', '}')
+    )
+    fixed_json = broken_json + '}' * missing_braces
+    if reader_result != 0:
+        logging.error("Error when reading back record")
+        logging.error("Schema:")
+        logging.error(schema)
+        logging.error("Invalid Record:")
+        logging.error(json_record)
+        return False
+    try:
+        pyschema.contrib.avro.loads(fixed_json, record_class=record.__class__)
+    except pyschema.ParseError, ex:
+        logging.error("Could not parse read-back record:")
+        logging.error(fixed_json)
+        logging.exception("")
+        return False
+
+    return True
+
+
+class TestExternalAvroValidation(TestCase):
+    """Validate the Avro schema against given records"""
 
     def test_text(self):
-        schema = pyschema.contrib.avro.get_schema_string(self.TextRecord)
-        json_record = '{"t": {"string": "text"}}'
-        self.assertTrue(valid_json_avro(schema, json_record))
+        record = TextRecord(t="foo")
+        self.assertTrue(avro_roundtrip(TextRecord, record))
 
+    def test_integer(self):
+        record = IntegerRecord(i=17)
+        self.assertTrue(avro_roundtrip(IntegerRecord, record))
 
-class RealAvroTest(TestCase):
-    def test_avrofile_roundtrip(self):
-        """Validates created schemas using official avro
+    def test_boolean(self):
+        record = BooleanRecord(b=True)
+        self.assertTrue(avro_roundtrip(BooleanRecord, record))
 
-        Uses avro python library and serializes some data
-        using the python API together with pyschema functions.
+    def test_float(self):
+        record = FloatRecord(f=0.1)
+        self.assertTrue(avro_roundtrip(FloatRecord, record))
 
-        TODO: replace with avro-tools
-        """
-        @pyschema.no_auto_store()
-        class Foo(pyschema.Record):
-            txt = Text()
-            n = Integer()
-
-        pychema_avro = pyschema.contrib.avro.get_schema_string(Foo)
-        avro_schema = avro.schema.parse(pychema_avro)
-
-        avro_file = StringIO()
-        writer = DataFileWriter(avro_file, DatumWriter(), avro_schema)
-
-        input_records = (
-            Foo(txt=u"Foo", n=5),
-            Foo(txt=u"Bar"),
-        )
-        for ir in input_records:
-            writer.append(pyschema.core.to_json_compatible(ir))
-        writer.flush()
-
-        avro_file.seek(0)
-        reader = DataFileReader(avro_file, DatumReader())
-        for i, datum in enumerate(reader):
-            record = pyschema.core.from_json_compatible(Foo, datum)
-            self.assertEqual(record, input_records[i])
-        reader.close()
-
-
-class ComplexTypeTests(TestCase):
-    """ TODO: replace with avro-tools tests """
-    def _readback(self, record):
-        avro_file = StringIO()
-        pychema_avro = pyschema.contrib.avro.get_schema_string(record)
-        avro_schema = avro.schema.parse(pychema_avro)
-        writer = DataFileWriter(avro_file, DatumWriter(), avro_schema)
-        datum = pyschema.core.to_json_compatible(record)
-        writer.append(datum)
-        writer.flush()
-
-        avro_file.seek(0)
-        reader = DataFileReader(avro_file, DatumReader())
-        for i, datum in enumerate(reader):
-            record = pyschema.core.from_json_compatible(
-                record.__class__,
-                datum
-            )
-        reader.close()
-        return record
-
-    def test_list(self):
-        @pyschema.no_auto_store()
-        class Foo(pyschema.Record):
-            l = List(Integer())
-
-        loaded = self._readback(Foo(l=[1, 2, 3]))
-
-        self.assertEqual(
-            tuple(loaded.l),
-            (1, 2, 3)
-        )
-
-        self.assertEqual(
-            [],
-            self._readback(Foo(l=[])).l
-        )
+    def test_byte(self):
+        record = BytesRecord(b=b"12345")
+        self.assertTrue(avro_roundtrip(BytesRecord, record))
 
     def test_enum(self):
-        @pyschema.no_auto_store()
-        class Foo(pyschema.Record):
-            e = Enum(["FOO", "BAR"])
+        record = EnumRecord(e="FOO")
+        self.assertTrue(avro_roundtrip(EnumRecord, record))
 
-        self.assertEqual(
-            self._readback(Foo(e="FOO")),
-            Foo(e="FOO")
-        )
+    def test_list(self):
+        record = ListRecord(l=["foo", "bar", "baz"])
+        self.assertTrue(avro_roundtrip(ListRecord, record))
 
-        self.assertEqual(
-            None,
-            self._readback(Foo()).e
-        )
+    def test_nullable_list_not_null(self):
+        record = NullableListRecord(nl=["foo", "bar", "baz"])
+        self.assertTrue(avro_roundtrip(NullableListRecord, record))
 
-        self.assertRaises(
-            ValueError,
-            lambda: self._readback(Foo(e="Foo"))
-        )
+    def test_nullable_list_null(self):
+        record = NullableListRecord(nl=None)
+        self.assertTrue(avro_roundtrip(NullableListRecord, record))
+
+    def test_subrecord(self):
+        record = SubRecordRecord(r=TextRecord(t="foo"))
+        self.assertTrue(avro_roundtrip(SubRecordRecord, record))
+
+    def test_nested_list(self):
+        record = NestedListRecord(l=[
+            TextRecord(t="foo"),
+            TextRecord(t="bar"),
+            TextRecord(t="baz"),
+        ])
+        self.assertTrue(avro_roundtrip(NestedListRecord, record))
+
+    def test_map(self):
+        record = MapRecord(m={"foo": 4, "baz": 27})
+        self.assertTrue(avro_roundtrip(MapRecord, record))
+
+    def test_nested_map(self):
+        record = NestedMapRecord(m={
+            "foo": TextRecord(t="bar"),
+            "baz": TextRecord(t="qux"),
+        })
+        self.assertTrue(avro_roundtrip(NestedMapRecord, record))

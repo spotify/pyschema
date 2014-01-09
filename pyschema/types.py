@@ -151,3 +151,25 @@ class SubRecord(Field):
 
     def load(self, obj):
         return core.from_json_compatible(self._record_class, obj)
+
+
+class Map(Field):
+    def __init__(self, value_type, nullable=False, **kwargs):
+        super(Map, self).__init__(**kwargs)
+        self.value_type = value_type
+        self.nullable = nullable
+        self.key_type = Text()
+
+    def load(self, obj):
+        return dict([
+            (self.key_type.load(k),
+             self.value_type.load(v))
+            for k, v in obj.iteritems()
+        ])
+
+    def dump(self, obj):
+        return dict([
+            (self.key_type.dump(k),
+             self.value_type.dump(v))
+            for k, v in obj.iteritems()
+        ])

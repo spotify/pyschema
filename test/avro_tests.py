@@ -45,7 +45,7 @@ hand_crafted_schema_dict = {
             "name": "ENUM",
             "symbols": ["FOO", "bar"]
         }, "null"]},
-        {"name": "g", "type": [{"type": "array", "items": "string"}, "null"]}
+        {"name": "g", "type": [{"type": "array", "items": ["string", "null"]}, "null"]}
     ]
 }
 

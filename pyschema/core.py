@@ -34,6 +34,7 @@ s = dumps(rec)
 print loads(s)
 
 """
+from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
 from itertools import izip
 try:
@@ -41,6 +42,7 @@ try:
 except:
     import json
 import warnings
+import types
 
 
 class ParseError(Exception):
@@ -107,29 +109,41 @@ class Field(object):
         pass
 
     @classmethod
-    def mixin(cls, method):
-        """Shortcut decorator for assigning a mixin methods or properties to an existing field type
+    def mixin(cls, mixin_cls):
+        """Decorator for mixing in additional functionality into field type
 
         Example:
 
         @Integer.mixin
-        def postgres_type(self):
-            return 'INT'
+        class IntegerPostgresExtensions:
+            postgres_type = 'INT'
 
-        Equivalent to:
+            def postgres_dump(self, obj):
+                self.dump(obj) + "::integer"
 
-        def postgres_type(self):
-            return 'INT'
+        Is roughly equivalent to:
 
-        Integer.postgres_type = postgres_type
+        Integer.postgres_type = 'INT'
+
+        def postgres_dump(self, obj):
+            self.dump(obj) + "::integer"
+
+        Integer.postgres_dump = postgres_dump
 
         """
-        if isinstance(method, property):
-            method_name = method.fget.__name__
-        else:
-            method_name = method.__name__
-        setattr(cls, method_name, method)
-        return method
+        for item_name in dir(mixin_cls):
+            if item_name.startswith("__"):
+                # don't copy magic properties
+                continue
+            item = getattr(mixin_cls, item_name)
+
+            if isinstance(item, types.MethodType):
+                # unbound method will cause problems
+                # so get the underlying function instead
+                item = item.im_func
+
+            setattr(cls, item_name, item)
+        return mixin_cls
 
 
 auto_store = RecordStore()

@@ -47,152 +47,133 @@ Map.avro_type_name = "map"
 
 
 @Field.mixin
-def avro_type_schema(self):
-    return [self.avro_type_name, "null"]
+class FieldMixin:
+    def avro_type_schema(self):
+        return [self.avro_type_name, "null"]
 
-
-@Field.mixin
-def avro_dump(self, o):
-    if o is None:
-        return None
-    else:
-        # relying on the reference json dump behavior
-        # could be a bit dangerous
-        return {self.avro_type_name: self.dump(o)}
-
-
-@Field.mixin
-def avro_load(self, o):
-    if o is None:
-        return None
-    else:
-        return self.load(o[self.avro_type_name])
-
-
-@Field.mixin
-def avro_type_extra_args(self):
-    return {}
-
-### `List`/array extensions ###
-
-
-@List.mixin
-def avro_type_schema(self):
-    t = {
-        "type": "array",
-        "items": self.field_type.avro_type_schema()
-    }
-    if self.nullable:
-        return [t, "null"]
-    else:
-        return t
-
-
-@List.mixin
-def avro_dump(self, obj):
-    if obj is None:
-        return None
-    else:
-        l = [self.field_type.avro_dump(o) for o in obj]
-        if self.nullable:
-            return {self.avro_type_name: l}
+    def avro_dump(self, o):
+        if o is None:
+            return None
         else:
-            return l
+            # relying on the reference json dump behavior
+            # could be a bit dangerous
+            return {self.avro_type_name: self.dump(o)}
+
+    def avro_load(self, o):
+        if o is None:
+            return None
+        else:
+            return self.load(o[self.avro_type_name])
 
 
 @List.mixin
-def avro_load(self, obj):
-    if obj is None:
-        return None
-    else:
+class ListMixin:
+    def avro_type_schema(self):
+        t = {
+            "type": "array",
+            "items": self.field_type.avro_type_schema()
+        }
         if self.nullable:
-            obj = obj[self.avro_type_name]
-        return [
-            self.field_type.avro_load(o)
-            for o in obj
-        ]
+            return [t, "null"]
+        else:
+            return t
+
+    def avro_dump(self, obj):
+        if obj is None:
+            return None
+        else:
+            l = [self.field_type.avro_dump(o) for o in obj]
+            if self.nullable:
+                return {self.avro_type_name: l}
+            else:
+                return l
+
+    def avro_load(self, obj):
+        if obj is None:
+            return None
+        else:
+            if self.nullable:
+                obj = obj[self.avro_type_name]
+            return [
+                self.field_type.avro_load(o)
+                for o in obj
+            ]
 
 
 ### `Enum` extensions
 @Enum.mixin
-def avro_type_schema(self):
-    return [
-        {
-            "type": "enum",
-            "name": self.avro_type_name,
-            "symbols": list(self.values)
-        },
-        "null"
-    ]
-
-
-### `SubRecord` extensions
-@SubRecord.mixin
-def avro_type_schema(self):
-    return [get_schema_dict(self._record_class), "null"]
+class EnumMixin:
+    def avro_type_schema(self):
+        return [
+            {
+                "type": "enum",
+                "name": self.avro_type_name,
+                "symbols": list(self.values)
+            },
+            "null"
+        ]
 
 
 @SubRecord.mixin
-@property
-def avro_type_name(self):
-    return self._record_class._record_name
+class SubRecordMixin:
+    def avro_type_schema(self):
+        return [get_schema_dict(self._record_class), "null"]
 
+    @property
+    def avro_type_name(self):
+        return self._record_class._record_name
 
-@SubRecord.mixin
-def avro_dump(self, obj):
-    return {self.avro_type_name: obj}
+    def avro_dump(self, obj):
+        return {self.avro_type_name: obj}
 
-
-@SubRecord.mixin
-def avro_load(self, obj):
-    return from_json_compatible(self._record_class, obj[self.avro_type_name])
-
-
-### `Map` extensions
-@Map.mixin
-def avro_type_schema(self):
-    assert isinstance(self.key_type, Text)
-    m = {
-        "type": "map",
-        "values": self.value_type.avro_type_schema()
-    }
-    if self.nullable:
-        return [m, "null"]
-    else:
-        return m
+    def avro_load(self, obj):
+        return from_json_compatible(
+            self._record_class,
+            obj[self.avro_type_name]
+        )
 
 
 @Map.mixin
-def avro_dump(self, obj):
-    if obj is None:
-        return None
-    else:
-        m = dict([(
-            # using json loader for key is kind of a hack
-            # since this isn't an actual type in avro (always text)
-            self.key_type.dump(k),
-            self.value_type.avro_dump(v)
-        ) for k, v in obj.iteritems()])
+class MapMixin:
+    def avro_type_schema(self):
+        assert isinstance(self.key_type, Text)
+        m = {
+            "type": "map",
+            "values": self.value_type.avro_type_schema()
+        }
         if self.nullable:
-            return {self.avro_type_name: m}
+            return [m, "null"]
         else:
             return m
 
+    def avro_dump(self, obj):
+        if obj is None:
+            return None
+        else:
+            m = dict([(
+                # using json loader for key is kind of a hack
+                # since this isn't an actual type in avro (always text)
+                self.key_type.dump(k),
+                self.value_type.avro_dump(v)
+            ) for k, v in obj.iteritems()])
+            if self.nullable:
+                return {self.avro_type_name: m}
+            else:
+                return m
 
-@Map.mixin
-def avro_load(self, obj):
-    if obj is None:
-        return None
-    else:
-        if self.nullable:
-            obj = obj[self.avro_type_name]
-        m = dict([(
-            # using json loader for key is kind of a hack
-            # since this isn't an actual type in avro (always text)
-            self.key_type.load(k),
-            self.value_type.avro_load(v)
-        ) for k, v in obj.iteritems()])
-        return m
+    def avro_load(self, obj):
+        if obj is None:
+            return None
+        else:
+            if self.nullable:
+                obj = obj[self.avro_type_name]
+            m = dict([(
+                # using json loader for key is kind of a hack
+                # since this isn't an actual type in avro (always text)
+                self.key_type.load(k),
+                self.value_type.avro_load(v)
+            ) for k, v in obj.iteritems()])
+            return m
 
 
 # Schema generation

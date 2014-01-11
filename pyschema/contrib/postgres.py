@@ -15,16 +15,8 @@
 from pyschema.types import Integer, Text
 
 
-@Integer.mixin
-@property
-def pg_type(self):
-    return "INT"
-
-
-@Text.mixin
-@property
-def pg_type(self):
-    return "TEXT"
+Integer.pg_type = "INT"
+Text.pg_type = "TEXT"
 
 
 def types(record_class):

@@ -15,7 +15,7 @@
 
 """ Schema definition toolkit using Python classes
 
-Example:
+Usage example:
 
 class Foo(Record):
     bin = Bytes()
@@ -24,7 +24,7 @@ class Foo(Record):
 class MyRecord(Record):
     a_string = Text()
     a_float = Float()
-    record = List(SubRecord(Foo))
+record = List(SubRecord(Foo))
 
 
 rec = MyRecord(a_string="hej")
@@ -241,13 +241,12 @@ def enable_auto_register():
 def no_auto_store():
     """ Temporarily disable automatic registration of records in the auto_store
 
-    Decorator factory.
+    Decorator factory. This is _NOT_ thread safe
 
     >>> @no_auto_store()
-    >>> def MyRecord(Record)
-    >>>    pass
-
-    >>> MyRecord in auto_store
+    ... class BarRecord(Record):
+    ...     pass
+    >>> BarRecord in auto_store
     False
 
     """
@@ -346,21 +345,26 @@ def ispyschema(schema):
     Returns true for PySchema Record *classes*
     i.e. NOT when schema is a *Record* instance
 
-    class MyRecord(Record):
-        pass
-
-    >>> ispyschema(MyRecord)
+    >>> class FooRecord(Record):
+    ...     pass
+    >>> ispyschema(FooRecord)
     True
-    >>> ispyschema(MyRecord())
+    >>> ispyschema(FooRecord())
     False
     """
     return isinstance(schema, PySchema)
 
 
-def load_json_dct(dct, record_store=None, record_class=None, loader=from_json_compatible):
+def load_json_dct(
+    dct,
+    record_store=None,
+    record_class=None,
+    loader=from_json_compatible
+):
     """ Create a Record instance from a json-compatible dictionary
 
-    The dictionary values should have types that are json compatible, as if just loaded from a json serialized record string.
+    The dictionary values should have types that are json compatible,
+    as if just loaded from a json serialized record string.
 
     :param dct:
     Python dictionary with key/value pairs for the record
@@ -369,7 +373,8 @@ def load_json_dct(dct, record_store=None, record_class=None, loader=from_json_co
     Record store to use for schema lookups (when $record_name field is present)
 
     :param record_class:
-    PySchema Record class for the record to load. This will override any $record_name fields specified in `dct`
+    PySchema Record class for the record to load.
+    This will override any $record_name fields specified in `dct`
 
     """
     if record_class is None:
@@ -379,7 +384,8 @@ def load_json_dct(dct, record_store=None, record_class=None, loader=from_json_co
             record_name = dct.pop("$record_name")
         except KeyError:
             raise ParseError(
-                "Serialized record missing '$record_name' record identifier and no record_class supplied"
+                "Serialized record missing '$record_name' "
+                "record identifier and no record_class supplied"
             )
         try:
             record_class = record_store.get(record_name)
@@ -392,7 +398,12 @@ def load_json_dct(dct, record_store=None, record_class=None, loader=from_json_co
     return record
 
 
-def loads(s, record_store=None, record_class=None, loader=from_json_compatible):
+def loads(
+    s,
+    record_store=None,
+    record_class=None,
+    loader=from_json_compatible
+):
     """ Create a Record instance from a json serialized dictionary
 
     :param s:
@@ -402,7 +413,8 @@ def loads(s, record_store=None, record_class=None, loader=from_json_compatible):
     Record store to use for schema lookups (when $record_name field is present)
 
     :param record_class:
-    PySchema Record class for the record to load. This will override any $record_name fields specified in `s`
+    PySchema Record class for the record to load.
+    This will override any $record_name fields specified in `s`
 
     """
     if not isinstance(s, unicode):

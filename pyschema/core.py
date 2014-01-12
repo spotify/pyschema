@@ -33,6 +33,24 @@ rec.record = [Foo(bin="bar")]
 s = dumps(rec)
 print loads(s)
 
+
+Internals:
+
+A valid PySchema class is required to contain the following class variables:
+
+_schema:
+    A list of (`field_name`, `field_type`) tuples.
+    `field_type` should be an instance of a Field subclass
+
+_record_name:
+    The qualifying name for this schema. This is used for registering a record
+    in a `RecordStore` and for auto-identification of serialized records.
+    Should be unique within a specific RecordStore, so if auto registering is
+    used it should be unique within the execution chain of the current program.
+
+_field_names:
+    A set with the attribute names (the keys of _schema)
+
 """
 from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
@@ -158,6 +176,19 @@ class PySchema(ABCMeta):
     auto_register = True
 
     def __new__(metacls, name, bases, dct):
+        schema_attrs = metacls._get_schema_attributes(
+            name=name,
+            bases=bases,
+            dct=dct
+        )
+        dct.update(schema_attrs)
+        cls = ABCMeta.__new__(metacls, name, bases, dct)
+        if metacls.auto_register:
+            auto_store.add_record(cls)
+        return cls
+
+    @classmethod
+    def _get_schema_attributes(metacls, name, bases, dct):
         base_schema = []
         for b in bases:
             try:
@@ -172,14 +203,33 @@ class PySchema(ABCMeta):
 
         schema.sort(key=lambda x: x[1]._index)
         schema = base_schema + schema
-        dct["_schema"] = schema
-        dct["_fields"] = dict(schema)
-        dct["_record_name"] = name
+        return {
+            "_schema": schema,
+            "_record_name": name,
+            "_field_names": set(x for x, y in schema)
+        }
 
-        cls = ABCMeta.__new__(metacls, name, bases, dct)
-        if metacls.auto_register:
-            auto_store.add_record(cls)
-        return cls
+    @classmethod
+    def from_class(metacls, cls):
+        """Create proper PySchema class from cls
+
+        Any methods and attributes will be transferred to the
+        new object
+        """
+        schema_attr = metacls._get_schema_attributes(
+            name=cls.__name__,
+            bases=(cls,),
+            dct=cls.__dict__
+        )
+
+        @no_auto_store()
+        class TemporaryName(Record, cls):
+            pass
+
+        for k, v in schema_attr.iteritems():
+            setattr(TemporaryName, k, v)
+
+        return TemporaryName
 
 
 def disable_auto_register():
@@ -191,7 +241,9 @@ def enable_auto_register():
 
 
 def no_auto_store():
-    """ Decorator factory used to temporarily disable automatic registration of records in the auto_store
+    """ Temporarily disable automatic registration of records in the auto_store
+
+    Decorator factory.
 
     >>> @no_auto_store()
     >>> def MyRecord(Record)
@@ -218,15 +270,17 @@ class Record(object):
     def __init__(self, *args, **kwargs):
         if args:
             # TODO: allow this...?
+            # The idea behind only allowing keyword arguments
+            # is to prevent accidental misuse of a changed schema
             raise TypeError('Non-keyword arguments not allowed'
                             ' when initializing Records')
-        for k in self._fields:  # None-defualt everything
+        for k, _ in self._schema:  # None-defualt everything
             object.__setattr__(self, k, None)
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
     def __setattr__(self, name, value):
-        if name not in self._fields:
+        if name not in self._field_names:
             raise AttributeError(
                 "No field %r in %s"
                 % (name, self._record_name)
@@ -250,7 +304,7 @@ class Record(object):
     def __cmp__(self, other):
         if self._record_name != other._record_name:
             return cmp(self._record_name, other._record_name)
-        fields = list(self._fields)
+        fields = [x for x, _ in self._schema]
         a = (getattr(self, key) for key in fields)
         b = (getattr(other, key) for key in fields)
 
@@ -289,8 +343,10 @@ def from_json_compatible(record_class, dct):
 
 
 def ispyschema(schema):
-    """ Type checker for that will return True when schema is a subclass of Record
-    i.e. NOT when schema is an _instance_ of a Record subclass
+    """ Is object PySchema instance?
+
+    Returns true for PySchema Record *classes*
+    i.e. NOT when schema is a *Record* instance
 
     class MyRecord(Record):
         pass

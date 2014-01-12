@@ -55,3 +55,55 @@ class TestSubRecord(RevertDefinitionsTest):
 class TestBaseRecordNotInStore(TestCase):
     def test(self):
         self.assertTrue(Record not in pyschema.core.auto_store)
+
+
+class TestRuntimeRecord(TestCase):
+    def setUp(self):
+        class Foo:
+            t = Text()
+
+            def calculated(self):
+                return self.t * 2
+
+        Foo.i = Integer()
+        setattr(Foo, "b", Boolean())
+        self.Foo = pyschema.core.PySchema.from_class(Foo)
+
+    def test_class_field(self):
+        record = self.Foo(t=u"foo")
+        self.assertEquals(record.t, u"foo")
+
+    def test_post_declaration_field(self):
+        record = self.Foo(i=10)
+        self.assertEquals(record.i, 10)
+
+    def test_setattr_field(self):
+        record = self.Foo()
+        self.assertTrue(record.b is None)
+        record.b = False
+        self.assertFalse(record.b)
+
+    def test_forbidden_assignment(self):
+        record = self.Foo()
+
+        def forbidden_assignment():
+            record.c = "Something"
+
+        self.assertRaises(
+            AttributeError,
+            forbidden_assignment
+        )
+
+    def test_record_name(self):
+        self.assertEquals(
+            self.Foo._record_name,
+            "Foo"
+        )
+
+    def test_type_adherence(self):
+        self.assertTrue(pyschema.ispyschema(self.Foo))
+
+    def test_method(self):
+        record = self.Foo(t=u"a")
+        calc = record.calculated()
+        self.assertEquals(calc, u"aa")

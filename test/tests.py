@@ -59,7 +59,7 @@ class TestBaseRecordNotInStore(TestCase):
 
 class TestRuntimeRecord(TestCase):
     def setUp(self):
-        class Foo:
+        class Foo(object):
             t = Text()
 
             def calculated(self):
@@ -67,7 +67,7 @@ class TestRuntimeRecord(TestCase):
 
         Foo.i = Integer()
         setattr(Foo, "b", Boolean())
-        self.Foo = pyschema.core.PySchema.from_class(Foo)
+        self.Foo = pyschema.core.PySchema.from_class(Foo, auto_store=False)
 
     def test_class_field(self):
         record = self.Foo(t=u"foo")

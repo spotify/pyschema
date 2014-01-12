@@ -210,26 +210,24 @@ class PySchema(ABCMeta):
         }
 
     @classmethod
-    def from_class(metacls, cls):
+    def from_class(metacls, cls, auto_store=True):
         """Create proper PySchema class from cls
 
         Any methods and attributes will be transferred to the
         new object
         """
-        schema_attr = metacls._get_schema_attributes(
-            name=cls.__name__,
-            bases=(cls,),
-            dct=cls.__dict__
-        )
+        if auto_store:
+            def wrap(cls):
+                return cls
+        else:
+            wrap = no_auto_store()
 
-        @no_auto_store()
-        class TemporaryName(Record, cls):
-            pass
-
-        for k, v in schema_attr.iteritems():
-            setattr(TemporaryName, k, v)
-
-        return TemporaryName
+        return wrap(metacls.__new__(
+            metacls,
+            cls.__name__,
+            (Record,),
+            dict(cls.__dict__)
+        ))
 
 
 def disable_auto_register():

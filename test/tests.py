@@ -13,7 +13,7 @@
 # the License.
 
 from unittest import TestCase
-from pyschema import Record, dumps, loads, ispyschema
+from pyschema import Record, dumps, loads, ispyschema, no_auto_store
 from pyschema.types import *
 import pyschema.core
 
@@ -27,14 +27,10 @@ class RevertDefinitionsTest(TestCase):
         pyschema.core.auto_store = self._original_schemas
 
 
-class TestSubRecord(RevertDefinitionsTest):
+class TestNestedRecord(RevertDefinitionsTest):
     def test_full_circle(self):
         class Foo(Record):
             bin = Bytes()
-
-        self.assertTrue(ispyschema(Foo))
-        self.assertTrue(issubclass(Foo, Record))
-        self.assertTrue(isinstance(Foo, pyschema.core.PySchema))
 
         class MyRecord(Record):
             a_string = Text()
@@ -57,17 +53,18 @@ class TestBaseRecordNotInStore(TestCase):
         self.assertTrue(Record not in pyschema.core.auto_store)
 
 
-class TestRuntimeRecord(TestCase):
+class TestBasicUsage(TestCase):
     def setUp(self):
-        class Foo(object):
+        @no_auto_store()
+        class Foo(Record):
             t = Text()
+            i = Integer()
+            b = Boolean()
 
             def calculated(self):
                 return self.t * 2
 
-        Foo.i = Integer()
-        setattr(Foo, "b", Boolean())
-        self.Foo = pyschema.core.PySchema.from_class(Foo, auto_store=False)
+        self.Foo = Foo
 
     def test_class_field(self):
         record = self.Foo(t=u"foo")
@@ -101,9 +98,24 @@ class TestRuntimeRecord(TestCase):
         )
 
     def test_type_adherence(self):
-        self.assertTrue(pyschema.ispyschema(self.Foo))
+        self.assertTrue(ispyschema(self.Foo))
+        self.assertTrue(issubclass(self.Foo, Record))
+        self.assertTrue(isinstance(self.Foo, pyschema.core.PySchema))
 
     def test_method(self):
         record = self.Foo(t=u"a")
         calc = record.calculated()
         self.assertEquals(calc, u"aa")
+
+
+class TestRuntimeRecord(TestBasicUsage):
+    def setUp(self):
+        class Foo(object):
+            t = Text()
+
+            def calculated(self):
+                return self.t * 2
+
+        Foo.i = Integer()
+        setattr(Foo, "b", Boolean())
+        self.Foo = pyschema.core.PySchema.from_class(Foo, auto_store=False)

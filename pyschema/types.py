@@ -30,7 +30,7 @@ class Text(Field):
             try:
                 return obj.decode('utf8')
             except:
-                raise ParseError(
+                raise ValueError(
                     "%r is not a valid UTF-8 string" % obj
                 )
 
@@ -61,7 +61,10 @@ class Bytes(Field):
 
     def dump(self, binary_data):
         if isinstance(binary_data, unicode):
-            raise ValueError("Unicode objects are not accepted values for Bytes (%r)" % (binary_data,))
+            raise ValueError(
+                "Unicode objects are not accepted values for Bytes (%r)"
+                % (binary_data,)
+            )
         if self.human_readable:
             return self._dump_utf8_codepoints(binary_data)
         return self._dump_b64(binary_data)
@@ -74,9 +77,13 @@ class List(Field):
         self.nullable = nullable
 
     def load(self, obj):
+        if not isinstance(obj, list):
+            raise ParseError("%r is not a list object" % obj)
         return [self.field_type.load(o) for o in obj]
 
     def dump(self, obj):
+        if not isinstance(obj, (tuple, list)):
+            raise ValueError("%r is not a list object" % obj)
         return [self.field_type.dump(o) for o in obj]
 
 
@@ -110,7 +117,9 @@ class Integer(Field):
         return obj
 
     def load(self, obj):
-        return self.dump(obj)
+        if not isinstance(obj, (int, type(None))):
+            raise ParseError("%r is not a valid Integer" % (obj,))
+        return obj
 
 
 class Boolean(Field):
@@ -119,20 +128,27 @@ class Boolean(Field):
 
     def dump(self, obj):
         if obj not in self.VALUE_MAP:
-            raise ParseError(
+            raise ValueError(
                 "Invalid value for Boolean field: %r" % obj)
         return bool(obj)
 
     def load(self, obj):
-        return self.dump(obj)
+        if obj not in self.VALUE_MAP:
+            raise ParseError(
+                "Invalid value for Boolean field: %r" % obj)
+        return bool(obj)
 
 
 class Float(Field):
     def dump(self, obj):
+        if not isinstance(obj, float):
+            raise ValueError("Invalid value for Float field: %r" % obj)
         return float(obj)
 
     def load(self, obj):
-        return self.dump(obj)
+        if not isinstance(obj, float):
+            raise ParseError("Invalid value for Float field: %r" % obj)
+        return float(obj)
 
 
 class SubRecord(Field):
@@ -145,7 +161,7 @@ class SubRecord(Field):
 
     def dump(self, obj):
         if not isinstance(obj, self._record_class):
-            raise ParseError("%r is not a %r"
+            raise ValueError("%r is not a %r"
                              % (obj, self._record_class))
         return core.to_json_compatible(obj)
 
@@ -168,6 +184,9 @@ class Map(Field):
         ])
 
     def dump(self, obj):
+        if not isinstance(obj, dict):
+            raise ValueError("%r is not a dict" % (obj,))
+
         return dict([
             (self.key_type.dump(k),
              self.value_type.dump(v))

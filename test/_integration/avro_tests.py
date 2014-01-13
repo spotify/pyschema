@@ -81,9 +81,9 @@ avro_tools_path = "{0}/../../avro-tools-1.7.5.jar".format(
     os.path.dirname(os.path.realpath(__file__)))
 
 
-def avro_roundtrip(record_type, record):
-    schema = pyschema.contrib.avro.get_schema_string(record_type)
-    json_record = pyschema.contrib.avro.dumps(record)
+def avro_roundtrip(record_type, record, schema=None, json_record=None):
+    schema = schema or pyschema.contrib.avro.get_schema_string(record_type)
+    json_record = json_record or pyschema.contrib.avro.dumps(record)
 
     read_cmd = ["java", "-jar", avro_tools_path, "fragtojson", schema, "-"]
     write_cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]

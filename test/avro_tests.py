@@ -15,8 +15,13 @@
 from common import BaseTest
 from pyschema import Record, no_auto_store
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
+from pyschema.types import SubRecord, Map
 import pyschema.contrib.avro
 import simplejson as json
+
+
+class TextRecord(Record):
+    t = Text()
 
 
 class SomeAvroRecord(Record):
@@ -29,6 +34,9 @@ class SomeAvroRecord(Record):
         "FOO", "bar"
     ])
     g = List(Text(), nullable=True)
+    h = List(SubRecord(TextRecord))
+    i = Map(Text(), nullable=True)
+    j = Map(SubRecord(TextRecord))
 
 
 hand_crafted_schema_dict = {
@@ -45,10 +53,19 @@ hand_crafted_schema_dict = {
             "name": "ENUM",
             "symbols": ["FOO", "bar"]
         }, "null"]},
-        {"name": "g", "type": [{"type": "array", "items": ["string", "null"]}, "null"]}
+        {"name": "g", "type": [{"type": "array", "items": ["string", "null"]},
+                               "null"]},
+        {"name": "h", "type": {"type": "array", "items": [{
+            "name": "TextRecord",
+            "type": "record",
+            "fields": [{"name": "t", "type": ["string", "null"]}]
+        }, "null"]}},
+        {"name": "i", "type": [{"type": "map", "values": ["string", "null"]}, "null"]},
+
+        # The second instance of TextRecord should use type name
+        {"name": "j", "type": {"type": "map", "values": ["TextRecord", "null"]}}
     ]
 }
-
 
 class TestAvro(BaseTest):
     def test_avro_schema(self):
@@ -57,7 +74,7 @@ class TestAvro(BaseTest):
         names = tuple(x["name"] for x in fields)
         self.assertEquals(
             names,
-            ("a", "b", "c", "d", "e", "f", "g")
+            ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j")
         )
         self.assertEquals(schema["type"], "record")
         self.assertEquals(schema["name"], "SomeAvroRecord")
@@ -81,7 +98,10 @@ class TestAvro(BaseTest):
             d=False,
             e=0.1,
             f="FOO",
-            g=["wtf", "bbq"]
+            g=["wtf", "bbq"],
+            h=[TextRecord(t="yolo"), TextRecord(t="swag")],
+            i={"bar": "baz"},
+            j={"foo": TextRecord(t="bar"), "bar": TextRecord(t="baz")}
         )
         avro_string = pyschema.contrib.avro.dumps(s)
         new_s = pyschema.contrib.avro.loads(
@@ -95,6 +115,13 @@ class TestAvro(BaseTest):
         self.assertEquals(new_s.e, 0.1)
         self.assertEquals(new_s.f, u"FOO")
         self.assertEquals(tuple(new_s.g), (u"wtf", u"bbq"))
+        self.assertEquals(len(new_s.h), 2)
+        self.assertEquals((new_s.h[0].t, new_s.h[1].t), (u"yolo", u"swag"))
+        self.assertEquals(new_s.i, {"bar": "baz"})
+        self.assertTrue("foo" in new_s.j)
+        self.assertTrue("bar" in new_s.j)
+        self.assertEqual(new_s.j["foo"].t, "bar")
+        self.assertEqual(new_s.j["bar"].t, "baz")
 
     def test_preserve_field_order(self):
         @no_auto_store()
@@ -137,4 +164,28 @@ class TestAvro(BaseTest):
         self.assertEquals(
             tuple(reborn.a),
             ("c", "a", "b")
+        )
+
+    def test_unset_map(self):
+        @no_auto_store()
+        class MapRecord(Record):
+            a = Map(Text())
+
+        mr = MapRecord()
+        str_rec = pyschema.contrib.avro.dumps(mr)
+        reborn = pyschema.contrib.avro.loads(str_rec, record_class=MapRecord)
+        self.assertTrue(reborn.a is None)
+
+    def test_map_roundtrip(self):
+        @no_auto_store()
+        class MapRecord(Record):
+            a = Map(Text())
+
+        mr = MapRecord(a={"a": "b", "c": "d"})
+        str_rec = pyschema.contrib.avro.dumps(mr)
+        reborn = pyschema.contrib.avro.loads(str_rec, record_class=MapRecord)
+
+        self.assertEquals(
+            reborn.a,
+            {"a": "b", "c": "d"}
         )

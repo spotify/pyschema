@@ -71,6 +71,12 @@ class NestedMapRecord(Record):
     m = Map(SubRecord(TextRecord))
 
 
+@pyschema.no_auto_store()
+class RepeatedSubRecordRecord(Record):
+    r1 = SubRecord(TextRecord)
+    r2 = SubRecord(TextRecord)
+
+
 avro_tools_path = "{0}/../../avro-tools-1.7.5.jar".format(
     os.path.dirname(os.path.realpath(__file__)))
 
@@ -122,7 +128,7 @@ def avro_roundtrip(record_type, record):
         return False
     try:
         pyschema.contrib.avro.loads(fixed_json, record_class=record.__class__)
-    except pyschema.ParseError, ex:
+    except pyschema.ParseError:
         logging.error("Could not parse read-back record:")
         logging.error(fixed_json)
         logging.exception("")
@@ -192,3 +198,10 @@ class TestExternalAvroValidation(TestCase):
             "baz": TextRecord(t="qux"),
         })
         self.assertTrue(avro_roundtrip(NestedMapRecord, record))
+
+    def test_repeated_subrecord(self):
+        record = RepeatedSubRecordRecord(
+            r1=TextRecord(t="foo"),
+            r2=TextRecord(t="bar")
+        )
+        self.assertTrue(avro_roundtrip(RepeatedSubRecordRecord, record))

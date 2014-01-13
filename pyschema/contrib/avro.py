@@ -48,7 +48,7 @@ Map.avro_type_name = "map"
 
 @Field.mixin
 class FieldMixin:
-    def avro_type_schema(self):
+    def avro_type_schema(self, state):
         return [self.avro_type_name, "null"]
 
     def avro_dump(self, o):
@@ -68,10 +68,10 @@ class FieldMixin:
 
 @List.mixin
 class ListMixin:
-    def avro_type_schema(self):
+    def avro_type_schema(self, state):
         t = {
             "type": "array",
-            "items": self.field_type.avro_type_schema()
+            "items": self.field_type.avro_type_schema(state)
         }
         if self.nullable:
             return [t, "null"]
@@ -103,7 +103,7 @@ class ListMixin:
 ### `Enum` extensions
 @Enum.mixin
 class EnumMixin:
-    def avro_type_schema(self):
+    def avro_type_schema(self, state):
         return [
             {
                 "type": "enum",
@@ -116,8 +116,8 @@ class EnumMixin:
 
 @SubRecord.mixin
 class SubRecordMixin:
-    def avro_type_schema(self):
-        return [get_schema_dict(self._record_class), "null"]
+    def avro_type_schema(self, state):
+        return [get_schema_dict(self._record_class, state), "null"]
 
     @property
     def avro_type_name(self):
@@ -135,11 +135,11 @@ class SubRecordMixin:
 
 @Map.mixin
 class MapMixin:
-    def avro_type_schema(self):
+    def avro_type_schema(self, state):
         assert isinstance(self.key_type, Text)
         m = {
             "type": "map",
-            "values": self.value_type.avro_type_schema()
+            "values": self.value_type.avro_type_schema(state)
         }
         if self.nullable:
             return [m, "null"]
@@ -177,7 +177,17 @@ class MapMixin:
 
 
 # Schema generation
-def get_schema_dict(record):
+class SchemaGeneratorState(object):
+    def __init__(self):
+        self.declared_records = set()
+
+
+def get_schema_dict(record, state=None):
+    state = state or SchemaGeneratorState()
+    if record._record_name in state.declared_records:
+        return record._record_name
+    state.declared_records.add(record._record_name)
+
     avro_record = {
         "type": "record",
         "name": record._record_name,
@@ -186,7 +196,7 @@ def get_schema_dict(record):
     for field_name, field_type in record._schema:
         field_spec = {
             "name": field_name,
-            "type": field_type.avro_type_schema()
+            "type": field_type.avro_type_schema(state)
         }
         avro_fields.append(field_spec)
 

@@ -55,6 +55,7 @@ _field_names:
 from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
 from itertools import izip
+
 try:
     import simplejson as json
 except:
@@ -256,6 +257,7 @@ def no_auto_store():
     def decorator(cls):
         PySchema.auto_register = original_auto_register_value
         return cls
+
     return decorator
 
 
@@ -299,6 +301,9 @@ class Record(object):
         return self._record_name + '(' + ', '.join(strings) + ')'
 
     def __cmp__(self, other):
+        if not isinstance(other, Record):
+            # return default implementation cmp value
+            return cmp(id(self), other)
         if self._record_name != other._record_name:
             return cmp(self._record_name, other._record_name)
         fields = [x for x, _ in self._schema]
@@ -356,10 +361,10 @@ def ispyschema(schema):
 
 
 def load_json_dct(
-    dct,
-    record_store=None,
-    record_class=None,
-    loader=from_json_compatible
+        dct,
+        record_store=None,
+        record_class=None,
+        loader=from_json_compatible
 ):
     """ Create a Record instance from a json-compatible dictionary
 
@@ -399,10 +404,10 @@ def load_json_dct(
 
 
 def loads(
-    s,
-    record_store=None,
-    record_class=None,
-    loader=from_json_compatible
+        s,
+        record_store=None,
+        record_class=None,
+        loader=from_json_compatible
 ):
     """ Create a Record instance from a json serialized dictionary
 

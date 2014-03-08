@@ -123,25 +123,6 @@ class TestAvro(BaseTest):
         self.assertEqual(new_s.j["foo"].t, "bar")
         self.assertEqual(new_s.j["bar"].t, "baz")
 
-    def test_preserve_field_order(self):
-        @no_auto_store()
-        class AvroRecord(Record):
-            c = Float()
-            a = Text()
-            b = Integer()
-
-        ar = AvroRecord(
-            a="foo",
-            b=4,
-            c=1.0
-        )
-        serialized = pyschema.contrib.avro.dumps(ar)
-        self.assertTrue(
-            serialized.find('"c"')
-            < serialized.find('"a"')
-            < serialized.find('"b"')
-        )
-
     def test_unset_list(self):
         @no_auto_store()
         class ListRecord(Record):

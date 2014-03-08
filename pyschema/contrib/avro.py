@@ -124,7 +124,7 @@ class SubRecordMixin:
         return self._record_class._record_name
 
     def avro_dump(self, obj):
-        return {self.avro_type_name: obj}
+        return {self.avro_type_name: to_json_compatible(obj)}
 
     def avro_load(self, obj):
         return from_json_compatible(
@@ -208,58 +208,16 @@ def get_schema_string(record):
     return json.dumps(get_schema_dict(record))
 
 
-class OrderedPySchemaJsonEncoder(json.JSONEncoder):
-    """ Custom JSONEncoder for preserving field order
-    in serialized json strings (from schema definition)
-
-    This is required by some configurations of the java Avro JsonDecoder
-    """
-    def _make_dict(self, items):
-        string_parts = []
-        for key, val in items:
-            string_parts.append(''.join((
-                self.encode(key),
-                self.key_separator,
-                self.encode(val)
-            )))
-        return ''.join((
-            '{',
-            self.item_separator.join(string_parts),
-            '}'
-        ))
-
-    def encode_record(self, record):
-        keyvals = []
-        for name, fieldtype in record._schema:
-            value = getattr(record, name)
-            keyvals.append((
-                name,
-                fieldtype.avro_dump(value)
-            ))
-        return self._make_dict(keyvals)
-
-    def encode(self, x):
-        if isinstance(x, core.Record):
-            return self.encode_record(x)
-        elif isinstance(x, (list, tuple)):
-            return ''.join((
-                '[',
-                self.item_separator.join(
-                    self.encode(v) for v in x
-                ),
-                ']'
-            ))
-        elif isinstance(x, dict):
-            return self._make_dict(x.iteritems())
-
-        return super(OrderedPySchemaJsonEncoder, self).encode(x)
-
-
-ordered_json_encoder = OrderedPySchemaJsonEncoder()
-
-
 def dumps(record):
-    return ordered_json_encoder.encode(record)
+    return json.dumps(to_json_compatible(record))
+
+
+def to_json_compatible(record):
+    dct = {}
+    for name, fieldtype in record._schema:
+        value = getattr(record, name)
+        dct[name] = fieldtype.avro_dump(value)
+    return dct
 
 
 def from_json_compatible(record_class, dct):

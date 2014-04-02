@@ -67,6 +67,7 @@ hand_crafted_schema_dict = {
     ]
 }
 
+
 class TestAvro(BaseTest):
     def test_avro_schema(self):
         schema = pyschema.contrib.avro.get_schema_dict(SomeAvroRecord)
@@ -170,3 +171,17 @@ class TestAvro(BaseTest):
             reborn.a,
             {"a": "b", "c": "d"}
         )
+
+
+class TestSubRecord(Record):
+    def test_subrecord_null(self):
+        @no_auto_store()
+        class TestRecord(Record):
+            @no_auto_store()
+            class Inner(Record):
+                field = Integer()
+            i = SubRecord(Inner)
+
+        r = TestRecord()
+        s = pyschema.contrib.avro.dumps(r)
+        pyschema.contrib.avro.loads(s, record_class=TestRecord)

@@ -124,9 +124,13 @@ class SubRecordMixin:
         return self._record_class._record_name
 
     def avro_dump(self, obj):
+        if obj is None:
+            return None
         return {self.avro_type_name: to_json_compatible(obj)}
 
     def avro_load(self, obj):
+        if obj is None:
+            return None
         return from_json_compatible(
             self._record_class,
             obj[self.avro_type_name]

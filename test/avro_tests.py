@@ -11,11 +11,12 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
+import datetime
 
 from common import BaseTest
 from pyschema import Record, no_auto_store
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
-from pyschema.types import SubRecord, Map
+from pyschema.types import SubRecord, Map, Date, DateTime
 import pyschema.contrib.avro
 import simplejson as json
 
@@ -37,6 +38,8 @@ class SomeAvroRecord(Record):
     h = List(SubRecord(TextRecord))
     i = Map(Text(), nullable=True)
     j = Map(SubRecord(TextRecord))
+    k = Date()
+    l = DateTime()
 
 
 hand_crafted_schema_dict = {
@@ -63,7 +66,9 @@ hand_crafted_schema_dict = {
         {"name": "i", "type": [{"type": "map", "values": ["string", "null"]}, "null"]},
 
         # The second instance of TextRecord should use type name
-        {"name": "j", "type": {"type": "map", "values": ["TextRecord", "null"]}}
+        {"name": "j", "type": {"type": "map", "values": ["TextRecord", "null"]}},
+        {"name": "k", "type": ["string", "null"]},
+        {"name": "l", "type": ["string", "null"]},
     ]
 }
 
@@ -75,7 +80,7 @@ class TestAvro(BaseTest):
         names = tuple(x["name"] for x in fields)
         self.assertEquals(
             names,
-            ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j")
+            ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l")
         )
         self.assertEquals(schema["type"], "record")
         self.assertEquals(schema["name"], "SomeAvroRecord")
@@ -102,7 +107,9 @@ class TestAvro(BaseTest):
             g=["wtf", "bbq"],
             h=[TextRecord(t="yolo"), TextRecord(t="swag")],
             i={"bar": "baz"},
-            j={"foo": TextRecord(t="bar"), "bar": TextRecord(t="baz")}
+            j={"foo": TextRecord(t="bar"), "bar": TextRecord(t="baz")},
+            k=datetime.date(2014,4,20),
+            l=datetime.datetime(2014,4,20,12,0,0),
         )
         avro_string = pyschema.contrib.avro.dumps(s)
         new_s = pyschema.contrib.avro.loads(
@@ -123,6 +130,8 @@ class TestAvro(BaseTest):
         self.assertTrue("bar" in new_s.j)
         self.assertEqual(new_s.j["foo"].t, "bar")
         self.assertEqual(new_s.j["bar"].t, "baz")
+        self.assertEquals(new_s.k, datetime.date(2014,4,20))
+        self.assertEquals(new_s.l, datetime.datetime(2014,4,20,12,0,0))
 
     def test_unset_list(self):
         @no_auto_store()

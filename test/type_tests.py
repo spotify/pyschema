@@ -64,6 +64,22 @@ class TypeTests(TestCase):
         forbidden = ["0.1", "0.123", True, False]
         self.assertCompliant(FloatRecord, allowed, forbidden)
 
+    def test_date(self):
+        @pyschema.no_auto_store()
+        class DateRecord(pyschema.Record):
+            field = Date()
+        allowed = [datetime.date(2014,4,20)]
+        forbidden = ['2014-02-02', 1201212121.0]
+        self.assertCompliant(DateRecord, allowed, forbidden)
+
+    def test_datetime(self):
+        @pyschema.no_auto_store()
+        class DateTimeRecord(pyschema.Record):
+            field = DateTime()
+        allowed = [datetime.datetime(2014,4,20,12,0,0), datetime.datetime(2012,1,1,23,3,3,12345)]
+        forbidden = ['2014-02-02 12:00:00', 1201212121.0]
+        self.assertCompliant(DateTimeRecord, allowed, forbidden)
+
     def test_bytes(self):
         @pyschema.no_auto_store()
         class BytesRecord(pyschema.Record):

@@ -11,6 +11,7 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
+import datetime
 
 import core
 from core import ParseError, Field
@@ -149,6 +150,34 @@ class Float(Field):
         if not isinstance(obj, float):
             raise ParseError("Invalid value for Float field: %r" % obj)
         return float(obj)
+
+
+class Date(Text):
+    def dump(self, obj):
+        if not isinstance(obj, datetime.date):
+            raise ValueError("Invalid value for Date field: %r" % obj)
+        return str(obj)
+
+    def load(self, obj):
+        try:
+            return datetime.datetime.strptime(obj, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError("Invalid value for Date field: %r" % obj)
+
+
+class DateTime(Text):
+    def dump(self, obj):
+        if not isinstance(obj, datetime.datetime):
+            raise ValueError("Invalid value for DateTime field: %r" % obj)
+        return str(obj)
+
+    def load(self, obj):
+        try:
+            if '.' in obj:
+                return datetime.datetime.strptime(obj, "%Y-%m-%d %H:%M:%S.%f")
+            return datetime.datetime.strptime(obj, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Invalid value for DateField field: %r" % obj)
 
 
 class SubRecord(Field):

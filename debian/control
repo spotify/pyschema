@@ -5,6 +5,8 @@ Maintainer: Elias Freider <freider@spotify.com>
 Build-Depends:	debhelper (>= 7),
 		python-all (>= 2.6.6-3~),
 		python-simplejson,
+		python-jsonschema,
+		python-ordereddict
 Standards-Version: 3.7.3
 X-Python-Version: >= 2.6
 
@@ -13,4 +15,5 @@ Architecture: all
 Depends: ${shlibs:Depends},
 	 	 ${misc:Depends},
 	 	 ${python:Depends},
+	 	 python-ordereddict
 Description: Schema definition and serialisation library

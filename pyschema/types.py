@@ -19,6 +19,10 @@ import binascii
 
 
 class Text(Field):
+    def __init__(self, nullable=True, **kwargs):
+        super(Text, self).__init__(**kwargs)
+        self.nullable = nullable
+
     def load(self, obj):
         if not isinstance(obj, (unicode, type(None))):
             raise ParseError("%r not a unicode object" % obj)
@@ -39,9 +43,10 @@ class Text(Field):
 class Bytes(Field):
     """Binary data"""
 
-    def __init__(self, human_readable=False, **kwargs):
+    def __init__(self, human_readable=False, nullable=True, **kwargs):
         super(Bytes, self).__init__(**kwargs)
         self.human_readable = human_readable
+        self.nullable = nullable
 
     def _load_utf8_codepoints(self, obj):
         return obj.encode("iso-8859-1")
@@ -91,9 +96,10 @@ class List(Field):
 class Enum(Field):
     _field_type = Text()  # don't change
 
-    def __init__(self, values, **kwargs):
+    def __init__(self, values, nullable=True, **kwargs):
         super(Enum, self).__init__(**kwargs)
         self.values = set(values)
+        self.nullable = nullable
 
     def dump(self, obj):
         if obj not in self.values:
@@ -112,6 +118,10 @@ class Enum(Field):
 
 
 class Integer(Field):
+    def __init__(self, nullable=True, **kwargs):
+        super(Integer, self).__init__(**kwargs)
+        self.nullable = nullable
+
     def dump(self, obj):
         if not isinstance(obj, (int, type(None))):
             raise ValueError("%r is not a valid Integer" % (obj,))
@@ -127,6 +137,10 @@ class Boolean(Field):
     VALUE_MAP = {True: '1', 1: '1',
                  False: '0', 0: '0'}
 
+    def __init__(self, nullable=True, **kwargs):
+        super(Boolean, self).__init__(**kwargs)
+        self.nullable = nullable
+
     def dump(self, obj):
         if obj not in self.VALUE_MAP:
             raise ValueError(
@@ -141,6 +155,10 @@ class Boolean(Field):
 
 
 class Float(Field):
+    def __init__(self, nullable=True, **kwargs):
+        super(Float, self).__init__(**kwargs)
+        self.nullable = nullable
+
     def dump(self, obj):
         if not isinstance(obj, float):
             raise ValueError("Invalid value for Float field: %r" % obj)
@@ -153,6 +171,10 @@ class Float(Field):
 
 
 class Date(Text):
+    def __init__(self, nullable=True, **kwargs):
+        super(Date, self).__init__(**kwargs)
+        self.nullable = nullable
+
     def dump(self, obj):
         if not isinstance(obj, datetime.date):
             raise ValueError("Invalid value for Date field: %r" % obj)
@@ -166,6 +188,10 @@ class Date(Text):
 
 
 class DateTime(Text):
+    def __init__(self, nullable=True, **kwargs):
+        super(DateTime, self).__init__(**kwargs)
+        self.nullable = nullable
+
     def dump(self, obj):
         if not isinstance(obj, datetime.datetime):
             raise ValueError("Invalid value for DateTime field: %r" % obj)
@@ -184,9 +210,10 @@ class SubRecord(Field):
     "Field for storing :class:`record.Record`s as fields "
     "in other :class:`record.Record`s"
 
-    def __init__(self, record_class, **kwargs):
+    def __init__(self, record_class, nullable=True, **kwargs):
         super(SubRecord, self).__init__(**kwargs)
         self._record_class = record_class
+        self.nullable = nullable
 
     def dump(self, obj):
         if not isinstance(obj, self._record_class):

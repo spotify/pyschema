@@ -49,7 +49,10 @@ Map.avro_type_name = "map"
 @Field.mixin
 class FieldMixin:
     def avro_type_schema(self, state):
-        return [self.avro_type_name, "null"]
+        if self.nullable:
+            return [self.avro_type_name, "null"]
+        else:
+            return self.avro_type_name
 
     def avro_dump(self, o):
         if o is None:
@@ -57,13 +60,19 @@ class FieldMixin:
         else:
             # relying on the reference json dump behavior
             # could be a bit dangerous
-            return {self.avro_type_name: self.dump(o)}
+            if self.nullable:
+                return {self.avro_type_name: self.dump(o)}
+            else:
+                return self.dump(o)
 
     def avro_load(self, o):
         if o is None:
             return None
         else:
-            return self.load(o[self.avro_type_name])
+            if self.nullable:
+                return self.load(o[self.avro_type_name])
+            else:
+                self.load(o)
 
 
 @List.mixin
@@ -104,20 +113,30 @@ class ListMixin:
 @Enum.mixin
 class EnumMixin:
     def avro_type_schema(self, state):
-        return [
-            {
+        if self.nullable:
+            return [
+                {
+                    "type": "enum",
+                    "name": self.avro_type_name,
+                    "symbols": list(self.values)
+                },
+                "null"
+            ]
+        else:
+            return {
                 "type": "enum",
                 "name": self.avro_type_name,
                 "symbols": list(self.values)
-            },
-            "null"
-        ]
+            }
 
 
 @SubRecord.mixin
 class SubRecordMixin:
     def avro_type_schema(self, state):
-        return [get_schema_dict(self._record_class, state), "null"]
+        if self.nullable:
+            return [get_schema_dict(self._record_class, state), "null"]
+        else:
+            return get_schema_dict(self._record_class, state)
 
     @property
     def avro_type_name(self):
@@ -126,15 +145,24 @@ class SubRecordMixin:
     def avro_dump(self, obj):
         if obj is None:
             return None
-        return {self.avro_type_name: to_json_compatible(obj)}
+        if self.nullable:
+            return {self.avro_type_name: to_json_compatible(obj)}
+        else:
+            return to_json_compatible(obj)
 
     def avro_load(self, obj):
         if obj is None:
             return None
-        return from_json_compatible(
-            self._record_class,
-            obj[self.avro_type_name]
-        )
+        if self.nullable:
+            return from_json_compatible(
+                self._record_class,
+                obj[self.avro_type_name]
+            )
+        else:
+            return from_json_compatible(
+                self._record_class,
+                obj
+            )
 
 
 @Map.mixin

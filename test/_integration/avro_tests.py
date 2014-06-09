@@ -17,8 +17,18 @@ class TextRecord(Record):
 
 
 @pyschema.no_auto_store()
+class NonnullableTextRecord(Record):
+    t = Text(nullable=False)
+
+
+@pyschema.no_auto_store()
 class IntegerRecord(Record):
     i = Integer()
+
+
+@pyschema.no_auto_store()
+class NonnullableIntegerRecord(Record):
+    i = Integer(nullable=False)
 
 
 @pyschema.no_auto_store()
@@ -27,8 +37,18 @@ class BooleanRecord(Record):
 
 
 @pyschema.no_auto_store()
+class NonnullableBooleanRecord(Record):
+    b = Boolean(nullable=False)
+
+
+@pyschema.no_auto_store()
 class FloatRecord(Record):
     f = Float()
+
+
+@pyschema.no_auto_store()
+class NonnullableFloatRecord(Record):
+    f = Float(nullable=False)
 
 
 @pyschema.no_auto_store()
@@ -37,8 +57,18 @@ class BytesRecord(Record):
 
 
 @pyschema.no_auto_store()
+class NonnullableBytesRecord(Record):
+    b = Bytes(nullable=False)
+
+
+@pyschema.no_auto_store()
 class EnumRecord(Record):
     e = Enum(["FOO", "BAR"])
+
+
+@pyschema.no_auto_store()
+class NonnullableEnumRecord(Record):
+    e = Enum(["FOO", "BAR"], nullable=False)
 
 
 @pyschema.no_auto_store()
@@ -54,6 +84,11 @@ class NullableListRecord(Record):
 @pyschema.no_auto_store()
 class SubRecordRecord(Record):
     r = SubRecord(TextRecord)
+
+
+@pyschema.no_auto_store()
+class NonnullableSubRecordRecord(Record):
+    r = SubRecord(TextRecord, nullable=False)
 
 
 @pyschema.no_auto_store()
@@ -144,25 +179,49 @@ class TestExternalAvroValidation(TestCase):
         record = TextRecord(t="foo")
         self.assertTrue(avro_roundtrip(TextRecord, record))
 
+    def test_nonnullable_text(self):
+        record = NonnullableTextRecord(t="foo")
+        self.assertTrue(avro_roundtrip(NonnullableTextRecord, record))
+
     def test_integer(self):
         record = IntegerRecord(i=17)
         self.assertTrue(avro_roundtrip(IntegerRecord, record))
+
+    def test_nonnullable_integer(self):
+        record = NonnullableIntegerRecord(i=17)
+        self.assertTrue(avro_roundtrip(NonnullableIntegerRecord, record))
 
     def test_boolean(self):
         record = BooleanRecord(b=True)
         self.assertTrue(avro_roundtrip(BooleanRecord, record))
 
+    def test_nonnullable_boolean(self):
+        record = NonnullableBooleanRecord(b=True)
+        self.assertTrue(avro_roundtrip(NonnullableBooleanRecord, record))
+
     def test_float(self):
         record = FloatRecord(f=0.1)
         self.assertTrue(avro_roundtrip(FloatRecord, record))
+
+    def test_nonnullable_float(self):
+        record = NonnullableFloatRecord(f=0.1)
+        self.assertTrue(avro_roundtrip(NonnullableFloatRecord, record))
 
     def test_byte(self):
         record = BytesRecord(b=b"12345")
         self.assertTrue(avro_roundtrip(BytesRecord, record))
 
+    def test_nonnullable_byte(self):
+        record = NonnullableBytesRecord(b=b"12345")
+        self.assertTrue(avro_roundtrip(NonnullableBytesRecord, record))
+
     def test_enum(self):
         record = EnumRecord(e="FOO")
         self.assertTrue(avro_roundtrip(EnumRecord, record))
+
+    def test_nonnullable_enum(self):
+        record = NonnullableEnumRecord(e="FOO")
+        self.assertTrue(avro_roundtrip(NonnullableEnumRecord, record))
 
     def test_list(self):
         record = ListRecord(l=["foo", "bar", "baz"])
@@ -179,6 +238,10 @@ class TestExternalAvroValidation(TestCase):
     def test_subrecord(self):
         record = SubRecordRecord(r=TextRecord(t="foo"))
         self.assertTrue(avro_roundtrip(SubRecordRecord, record))
+
+    def test_nonnullable_subrecord(self):
+        record = NonnullableSubRecordRecord(r=TextRecord(t="foo"))
+        self.assertTrue(avro_roundtrip(NonnullableSubRecordRecord, record))
 
     def test_nested_list(self):
         record = NestedListRecord(l=[

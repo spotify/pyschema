@@ -24,6 +24,8 @@ import simplejson as json
 class TextRecord(Record):
     t = Text()
 
+class TextRecord2(Record):
+    t = Text()
 
 class SomeAvroRecord(Record):
     a = Text()
@@ -40,6 +42,14 @@ class SomeAvroRecord(Record):
     j = Map(SubRecord(TextRecord))
     k = Date()
     l = DateTime()
+    m = Text(nullable=False)
+    n = Integer(nullable=False)
+    o = Bytes(nullable=False)
+    p = Boolean(nullable=False)
+    q = Float(nullable=False)
+    r = Enum(["FOO", "bar"], nullable=False)
+    s = SubRecord(TextRecord, nullable=False)
+    t = SubRecord(TextRecord2, nullable=False)
 
 
 hand_crafted_schema_dict = {
@@ -69,6 +79,22 @@ hand_crafted_schema_dict = {
         {"name": "j", "type": {"type": "map", "values": ["TextRecord", "null"]}},
         {"name": "k", "type": ["string", "null"]},
         {"name": "l", "type": ["string", "null"]},
+        {"name": "m", "type": "string"},
+        {"name": "n", "type": "long"},
+        {"name": "o", "type": "bytes"},
+        {"name": "p", "type": "boolean"},
+        {"name": "q", "type": "double"},
+        {"name": "r", "type": {
+            "type": "enum",
+            "name": "ENUM",
+            "symbols": ["FOO", "bar"]
+        }},
+        {"name": "s", "type": "TextRecord"},
+        {"name": "t", "type": {
+            "name": "TextRecord2",
+            "type": "record",
+            "fields": [{"name": "t", "type": ["string", "null"]}]}
+        }
     ]
 }
 
@@ -80,7 +106,8 @@ class TestAvro(BaseTest):
         names = tuple(x["name"] for x in fields)
         self.assertEquals(
             names,
-            ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l")
+            ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+             "n", "o", "p", "q", "r", "s", "t")
         )
         self.assertEquals(schema["type"], "record")
         self.assertEquals(schema["name"], "SomeAvroRecord")

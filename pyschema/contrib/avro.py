@@ -72,7 +72,7 @@ class FieldMixin:
             if self.nullable:
                 return self.load(o[self.avro_type_name])
             else:
-                self.load(o)
+                return self.load(o)
 
 
 @List.mixin

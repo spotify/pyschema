@@ -137,6 +137,14 @@ class TestAvro(BaseTest):
             j={"foo": TextRecord(t="bar"), "bar": TextRecord(t="baz")},
             k=datetime.date(2014,4,20),
             l=datetime.datetime(2014,4,20,12,0,0),
+            m=u"spotify",
+            n=1,
+            o=chr(2),
+            p=True,
+            q=0.5,
+            r="bar",
+            s=TextRecord(t="ace"),
+            t=TextRecord2(t="look"),
         )
         avro_string = pyschema.contrib.avro.dumps(s)
         new_s = pyschema.contrib.avro.loads(
@@ -159,6 +167,14 @@ class TestAvro(BaseTest):
         self.assertEqual(new_s.j["bar"].t, "baz")
         self.assertEquals(new_s.k, datetime.date(2014,4,20))
         self.assertEquals(new_s.l, datetime.datetime(2014,4,20,12,0,0))
+        self.assertEquals(new_s.m, u"spotify")
+        self.assertEquals(new_s.n, 1)
+        self.assertEquals(new_s.o, chr(2))
+        self.assertEquals(new_s.p, True)
+        self.assertEquals(new_s.q, 0.5)
+        self.assertEquals(new_s.r, u"bar")
+        self.assertEquals(new_s.s.t, u"ace")
+        self.assertEquals(new_s.t.t, u"look")
 
     def test_unset_list(self):
         @no_auto_store()

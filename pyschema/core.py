@@ -207,7 +207,7 @@ class PySchema(ABCMeta):
         return {
             "_schema": schema,
             "_record_name": name,
-            "_field_names": set(x for x, y in schema)
+            "_field_names": dict(schema)
         }
 
     @classmethod
@@ -336,10 +336,12 @@ def to_json_compatible(record):
 def from_json_compatible(record_class, dct):
     "Load from json-encodable"
     kwargs = {}
-    schema = record_class._schema
-    for field_name, field_type in schema:
-        if field_name in dct:
-            kwargs[field_name] = field_type.load(dct[field_name])
+
+    for key in dct:
+        field_type = record_class._field_names.get(key)
+        if field_type is None:
+            raise ParseError("Unexpected field encountered in line for record %s: %s" % (record_class.__name__, key))
+        kwargs[key] = field_type.load(dct[key])
 
     return record_class(**kwargs)
 
@@ -398,6 +400,10 @@ def load_json_dct(
             raise ParseError(
                 "Can't recognize record type %r"
                 % (record_name,), record_name)
+
+    # if record class is specified, use that instead of $record_name
+    elif "$record_name" in dct:
+        dct.pop("$record_name")
 
     record = loader(record_class, dct)
     return record

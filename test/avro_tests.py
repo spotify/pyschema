@@ -13,10 +13,12 @@
 # the License.
 import datetime
 
+from unittest import TestCase
 from common import BaseTest
 from pyschema import Record, no_auto_store
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 from pyschema.types import SubRecord, Map, Date, DateTime
+from pyschema.core import ParseError
 import pyschema.contrib.avro
 import simplejson as json
 
@@ -237,3 +239,15 @@ class TestSubRecord(Record):
         r = TestRecord()
         s = pyschema.contrib.avro.dumps(r)
         pyschema.contrib.avro.loads(s, record_class=TestRecord)
+
+
+class TestExtraFields(TestCase):
+
+    def test_fields(self):
+        @pyschema.no_auto_store()
+        class ValidRecord(pyschema.Record):
+            field = Integer()
+
+        line = '{"field": {"long": 8}, "invalid_field": {"long": 8}}'
+
+        self.assertRaises(ParseError, lambda: pyschema.contrib.avro.loads(line, record_class=ValidRecord))

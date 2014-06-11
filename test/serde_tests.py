@@ -1,6 +1,7 @@
 from unittest import TestCase
 import pyschema
-from pyschema.types import Bytes
+from pyschema.types import Bytes, Integer
+from pyschema.core import ParseError
 
 
 @pyschema.no_auto_store()
@@ -69,3 +70,15 @@ class TestBytes(TestCase):
             ValueError,
             lambda: self._roundtrip(ReadableData, u'\u65e5\u672c\u8a9e')
         )
+
+
+class TestExtraFields(TestCase):
+
+    def test_fields(self):
+        @pyschema.no_auto_store()
+        class ValidRecord(pyschema.Record):
+            field = Integer()
+
+        line = '{"field": 8, "invalid_field": 0}'
+
+        self.assertRaises(ParseError, lambda: pyschema.loads(line, record_class=ValidRecord))

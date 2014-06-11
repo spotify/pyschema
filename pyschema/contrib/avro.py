@@ -253,13 +253,16 @@ def to_json_compatible(record):
 
 
 def from_json_compatible(record_class, dct):
-    field_values = {}
-    schema = record_class._schema
-    for field_name, field_type in schema:
-        if field_name in dct:
-            field_values[field_name] = field_type.avro_load(dct[field_name])
+    "Load from json-encodable"
+    kwargs = {}
 
-    return record_class(**field_values)
+    for key in dct:
+        field_type = record_class._field_names.get(key)
+        if field_type is None:
+            raise core.ParseError("Unexpected field encountered in line for record %s: %s" % (record_class.__name__, key))
+        kwargs[key] = field_type.avro_load(dct[key])
+
+    return record_class(**kwargs)
 
 
 def loads(s, record_store=None, record_class=None):

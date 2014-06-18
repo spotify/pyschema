@@ -119,6 +119,9 @@ class Field(object):
     def __repr__(self):
         return self.__class__.__name__
 
+    def set_parent(self, schema):
+        pass  # no-op, but can be overridden by types that need parent references
+
     @abstractmethod
     def dump(self, obj):
         pass
@@ -184,6 +187,11 @@ class PySchema(ABCMeta):
         )
         dct.update(schema_attrs)
         cls = ABCMeta.__new__(metacls, name, bases, dct)
+
+        # allow self-references etc.
+        for field_name, field in cls._schema:
+            field.set_parent(cls)
+
         if metacls.auto_register:
             auto_store.add_record(cls)
         return cls

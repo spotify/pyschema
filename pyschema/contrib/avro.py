@@ -140,7 +140,11 @@ class SubRecordMixin:
 
     @property
     def avro_type_name(self):
-        return self._record_class._record_name
+        if hasattr(self._record_class, '_avro_namespace_'):
+            return '.'.join([self._record_class._avro_namespace_,
+                             self._record_class._record_name])
+        else:
+            return self._record_class._record_name
 
     def avro_dump(self, obj):
         if obj is None:
@@ -216,14 +220,25 @@ class SchemaGeneratorState(object):
 
 def get_schema_dict(record, state=None):
     state = state or SchemaGeneratorState()
-    if record._record_name in state.declared_records:
-        return record._record_name
-    state.declared_records.add(record._record_name)
+
+    if hasattr(record, '_avro_namespace_'):
+        namespace = record._avro_namespace_
+        record_name = namespace + '.' + record._record_name
+    else:
+        namespace = None
+        record_name = record._record_name
+
+    if record_name in state.declared_records:
+        return record_name
+    state.declared_records.add(record_name)
 
     avro_record = {
         "type": "record",
         "name": record._record_name,
     }
+    if namespace:
+        avro_record["namespace"] = namespace
+
     avro_fields = []
     for field_name, field_type in record._schema:
         field_spec = {

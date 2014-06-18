@@ -92,6 +92,9 @@ class List(Field):
             raise ValueError("%r is not a list object" % obj)
         return [self.field_type.dump(o) for o in obj]
 
+    def set_parent(self, schema):
+        self.field_type.set_parent(schema)
+
 
 class Enum(Field):
     _field_type = Text()  # don't change
@@ -206,6 +209,9 @@ class DateTime(Text):
             raise ValueError("Invalid value for DateField field: %r" % obj)
 
 
+SELF = object()
+
+
 class SubRecord(Field):
     "Field for storing :class:`record.Record`s as fields "
     "in other :class:`record.Record`s"
@@ -223,6 +229,10 @@ class SubRecord(Field):
 
     def load(self, obj):
         return core.from_json_compatible(self._record_class, obj)
+
+    def set_parent(self, schema):
+        if self._record_class == SELF:
+            self._record_class = schema
 
 
 class Map(Field):
@@ -248,3 +258,6 @@ class Map(Field):
              self.value_type.dump(v))
             for k, v in obj.iteritems()
         ])
+
+    def set_parent(self, schema):
+        self.value_type.set_parent(schema)

@@ -116,10 +116,22 @@ class TypeTests(TestCase):
             class Inner(pyschema.Record):
                 field = Text()
             field = SubRecord(Inner)
-        SubRecordRecord.Inner
+
         allowed = [SubRecordRecord.Inner(field=u"foo")]
         forbidden = [u"foo", {"field": u"foo"}]
         self.assertCompliant(SubRecordRecord, allowed, forbidden)
+
+    def test_subrecord_self(self):
+        @pyschema.no_auto_store()
+        class SelfReference(pyschema.Record):
+            field = SubRecord(SELF)
+
+        allowed = [SelfReference(
+            field=SelfReference(
+                field=SelfReference()
+            )
+        )]
+        self.assertCompliant(SelfReference, allowed, [])
 
     def test_map(self):
         @pyschema.no_auto_store()
@@ -138,5 +150,19 @@ class TypeTests(TestCase):
             field = Map(List(SubRecord(Inner)))
 
         allowed = [{"foo": [NestedRecord.Inner(field=u"bar")]}]
+        forbidden = []
+        self.assertCompliant(NestedRecord, allowed, forbidden)
+
+    def test_nested_self(self):
+        @pyschema.no_auto_store()
+        class NestedRecord(pyschema.Record):
+            field = Map(List(SubRecord(SELF)))
+
+        allowed = [{"foo": [
+            NestedRecord(field={
+                "bar": [NestedRecord()]
+                }
+            )]}
+        ]
         forbidden = []
         self.assertCompliant(NestedRecord, allowed, forbidden)

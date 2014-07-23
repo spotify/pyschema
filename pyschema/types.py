@@ -43,9 +43,9 @@ class Text(Field):
 class Bytes(Field):
     """Binary data"""
 
-    def __init__(self, human_readable=False, nullable=True, **kwargs):
+    def __init__(self, custom_encoding=False, nullable=True, **kwargs):
         super(Bytes, self).__init__(**kwargs)
-        self.human_readable = human_readable
+        self.custom_encoding = custom_encoding
         self.nullable = nullable
 
     def _load_utf8_codepoints(self, obj):
@@ -61,7 +61,7 @@ class Bytes(Field):
         return binascii.b2a_base64(binary_data).rstrip('\n')
 
     def load(self, obj):
-        if self.human_readable:
+        if not self.custom_encoding:
             return self._load_utf8_codepoints(obj)
         return self._load_b64(obj)
 
@@ -71,7 +71,7 @@ class Bytes(Field):
                 "Unicode objects are not accepted values for Bytes (%r)"
                 % (binary_data,)
             )
-        if self.human_readable:
+        if not self.custom_encoding:
             return self._dump_utf8_codepoints(binary_data)
         return self._dump_b64(binary_data)
 

@@ -137,6 +137,7 @@ class TestAvro(BaseTest):
             raise
 
     def test_internal_roundtrip(self):
+        all_bytes = ''.join([chr(i) for i in xrange(256)])
         s = SomeAvroRecord(
             a=u"yolo",
             b=4,
@@ -152,7 +153,7 @@ class TestAvro(BaseTest):
             l=datetime.datetime(2014,4,20,12,0,0),
             m=u"spotify",
             n=1,
-            o=chr(2),
+            o=all_bytes,
             p=True,
             q=0.5,
             r="bar",
@@ -183,7 +184,7 @@ class TestAvro(BaseTest):
         self.assertEquals(new_s.l, datetime.datetime(2014,4,20,12,0,0))
         self.assertEquals(new_s.m, u"spotify")
         self.assertEquals(new_s.n, 1)
-        self.assertEquals(new_s.o, chr(2))
+        self.assertEquals(new_s.o, all_bytes)
         self.assertEquals(new_s.p, True)
         self.assertEquals(new_s.q, 0.5)
         self.assertEquals(new_s.r, u"bar")

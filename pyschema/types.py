@@ -121,9 +121,10 @@ class Enum(Field):
 
 
 class Integer(Field):
-    def __init__(self, nullable=True, **kwargs):
+    def __init__(self, nullable=True, size=8, **kwargs):
         super(Integer, self).__init__(**kwargs)
         self.nullable = nullable
+        self.size = size
 
     def dump(self, obj):
         if not isinstance(obj, (int, type(None))):
@@ -158,9 +159,10 @@ class Boolean(Field):
 
 
 class Float(Field):
-    def __init__(self, nullable=True, **kwargs):
+    def __init__(self, nullable=True, size=8, **kwargs):
         super(Float, self).__init__(**kwargs)
         self.nullable = nullable
+        self.size = size
 
     def dump(self, obj):
         if not isinstance(obj, float):

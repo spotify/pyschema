@@ -242,6 +242,17 @@ class TestAvro(BaseTest):
             {"a": "b", "c": "d"}
         )
 
+    def test_short_types(self):
+        short_int = Integer(size=4)
+        self.assertEquals(short_int.avro_type_name, 'int')
+        long_int = Integer()
+        self.assertEquals(long_int.avro_type_name, 'long')
+        short_float = Float(size=4)
+        self.assertEquals(short_float.avro_type_name, 'float')
+        long_float = Float()
+        self.assertEquals(long_float.avro_type_name, 'double')
+
+
 
 class TestSubRecord(Record):
     def test_subrecord_null(self):

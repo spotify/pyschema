@@ -24,7 +24,7 @@ class Foo(Record):
 class MyRecord(Record):
     a_string = Text()
     a_float = Float()
-record = List(SubRecord(Foo))
+    record = List(SubRecord(Foo))
 
 
 rec = MyRecord(a_string="hej")

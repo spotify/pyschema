@@ -83,8 +83,11 @@ class RecordStore(object):
         """
         existing = self._recordmap.get(record_class.__name__, None)
         if existing:
-            warnings.warn("%s replacing previous definition in %s"
-                          % (record_class.__name__, existing.__module__))
+            warnings.warn(
+                "{prev_module}.{class_name} replaces record from {new_module}"
+                .format(class_name=record_class.__name__,
+                        prev_module=existing.__module__,
+                        new_module=record_class.__module__))
 
         self._recordmap[record_class.__name__] = record_class
         return record_class

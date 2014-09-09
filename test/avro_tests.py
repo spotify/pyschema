@@ -18,7 +18,7 @@ from common import BaseTest
 from pyschema import Record, no_auto_store
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 from pyschema.types import SubRecord, Map, Date, DateTime
-from pyschema.core import ParseError
+from pyschema.core import ParseError, NO_DEFAULT
 import pyschema.contrib.avro
 import simplejson as json
 
@@ -63,29 +63,38 @@ hand_crafted_schema_dict = {
     "type": "record",
     "name": "SomeAvroRecord",
     "fields": [
-        {"name": "a", "type": ["string", "null"]},
-        {"name": "b", "type": ["long", "null"]},
-        {"name": "c", "type": ["bytes", "null"]},
-        {"name": "d", "type": ["boolean", "null"]},
-        {"name": "e", "type": ["double", "null"]},
-        {"name": "f", "type": [{
+        {"name": "a", "type": ["null", "string"], "default": None},
+        {"name": "b", "type": ["null", "long"], "default": None},
+        {"name": "c", "type": ["null", "bytes"], "default": None},
+        {"name": "d", "type": ["null", "boolean"], "default": None},
+        {"name": "e", "type": ["null", "double"], "default": None},
+        {"name": "f", "type": ["null", {
             "type": "enum",
             "name": "ENUM",
             "symbols": ["FOO", "bar"]
-        }, "null"]},
-        {"name": "g", "type": [{"type": "array", "items": ["string", "null"]},
-                               "null"]},
-        {"name": "h", "type": {"type": "array", "items": [{
+        }], "default": None},
+        {"name": "g", "type": [{"type": "array", "items": ["null", "string"]},
+                               "null"], "default": []},
+        {"name": "h",
+         "type": {
+          "type": "array",
+          "items": [
+           "null",
+           {
             "name": "TextRecord",
             "type": "record",
-            "fields": [{"name": "t", "type": ["string", "null"]}]
-        }, "null"]}},
-        {"name": "i", "type": [{"type": "map", "values": ["string", "null"]}, "null"]},
+            "fields": [{"name": "t", "type": ["null", "string"], "default": None}]
+           }
+          ]
+         },
+         "default": []
+        },
+        {"name": "i", "type": [{"type": "map", "values": ["null", "string"]}, "null"], "default": {}},
 
         # The second instance of TextRecord should use type name
-        {"name": "j", "type": {"type": "map", "values": ["TextRecord", "null"]}},
-        {"name": "k", "type": ["string", "null"]},
-        {"name": "l", "type": ["string", "null"]},
+        {"name": "j", "type": {"type": "map", "values": ["null", "TextRecord"]}, "default": {}},
+        {"name": "k", "type": ["null", "string"], "default": None},
+        {"name": "l", "type": ["null", "string"], "default": None},
         {"name": "m", "type": "string"},
         {"name": "n", "type": "long"},
         {"name": "o", "type": "bytes"},
@@ -100,16 +109,66 @@ hand_crafted_schema_dict = {
         {"name": "t", "type": {
             "name": "TextRecord2",
             "type": "record",
-            "fields": [{"name": "t", "type": ["string", "null"]}]}
+            "fields": [{"name": "t", "type": ["null", "string"], "default": None}]}
         },
-        {"name": "u", "type": [{
+        {"name": "u", "type": ["null", {
              "name": "TextRecord3",
              "type": "record",
              "namespace": "blah.blah",
-             "fields": [{"name": "t", "type": ["string", "null"]}]}, "null"]
+             "fields": [{"name": "t", "type": ["null", "string"], "default": None}]}],
+             "default": None
         }
     ]
 }
+
+
+class NullableDefaultRecord(Record):
+    field_without_default = Text(nullable=False, default=pyschema.NO_DEFAULT)
+    field_with_default = Text(nullable=False, default=u"my_default")
+    nullable_field_without_default = Text(default=pyschema.NO_DEFAULT)
+    nullable_field_with_null_default = Text()
+    nullable_field_with_other_default = Text(default=u"my_other_default")
+    map_default_field = Map(Text())
+    list_default_field = List(Text(nullable=False))
+
+
+nullable_default_record_schema = {
+    "type": "record",
+    "name": "NullableDefaultRecord",
+    "fields": [
+        {"name": "field_without_default", "type": "string"},
+        {"name": "field_with_default", "type": "string", "default": "my_default"},
+        {"name": "nullable_field_without_default", "type": ["null", "string"]},  # this could just as well be ["string", "null"]
+        {"name": "nullable_field_with_null_default", "type": ["null", "string"], "default": None},
+        {"name": "nullable_field_with_other_default", "type": ["string", "null"], "default": u"my_other_default"},
+        {"name": "map_default_field", "type": {"type": "map", "values": ["null", "string"]}, "default": {}},
+        {"name": "list_default_field", "type": {"type": "array", "items": "string"}, "default": []}
+    ]
+}
+
+
+class TestNullableDefaultRecord(BaseTest):
+    def test_empty_construction(self):
+        record = NullableDefaultRecord()
+        self.assertEquals(record.field_with_default, u"my_default")
+        self.assertEquals(record.field_without_default, pyschema.NO_DEFAULT)
+        self.assertEquals(record.nullable_field_with_null_default, None)
+        self.assertEquals(
+            record.nullable_field_with_other_default,
+            u"my_other_default"
+        )
+
+    def test_avro_schema(self):
+        generated_schema_dct = pyschema.contrib.avro.get_schema_dict(NullableDefaultRecord)
+        self.recursive_compare(generated_schema_dct, nullable_default_record_schema)
+
+    def test_original_default_not_affected(self):
+        a = NullableDefaultRecord()
+        b = NullableDefaultRecord()
+        a.map_default_field["something"] = "foo"
+        self.assertFalse("something" in b.map_default_field)
+        b.list_default_field.append("foo")
+        self.assertEquals(len(a.list_default_field), 0)
 
 
 class TestAvro(BaseTest):
@@ -132,8 +191,8 @@ class TestAvro(BaseTest):
             self.recursive_compare(schema_dict, hand_crafted_schema_dict)
             self.recursive_compare(hand_crafted_schema_dict, schema_dict)
         except:
-            print "Intended:", hand_crafted_schema_dict
-            print "    Output:", schema_dict
+            print "Intended:", json.dumps(hand_crafted_schema_dict)
+            print "    Output:", json.dumps(schema_dict)
             raise
 
     def test_internal_roundtrip(self):
@@ -202,7 +261,7 @@ class TestAvro(BaseTest):
         lr = ListRecord()
         str_rec = pyschema.contrib.avro.dumps(lr)
         reborn = pyschema.contrib.avro.loads(str_rec, record_class=ListRecord)
-        self.assertTrue(reborn.a is None)
+        self.assertTrue(isinstance(reborn.a, list))
 
     def test_list_roundtrip(self):
         @no_auto_store()
@@ -226,7 +285,7 @@ class TestAvro(BaseTest):
         mr = MapRecord()
         str_rec = pyschema.contrib.avro.dumps(mr)
         reborn = pyschema.contrib.avro.loads(str_rec, record_class=MapRecord)
-        self.assertTrue(reborn.a is None)
+        self.assertTrue(isinstance(reborn.a, dict))
 
     def test_map_roundtrip(self):
         @no_auto_store()

@@ -14,15 +14,12 @@
 import datetime
 
 import core
+import copy
 from core import ParseError, Field
 import binascii
 
 
 class Text(Field):
-    def __init__(self, nullable=True, **kwargs):
-        super(Text, self).__init__(**kwargs)
-        self.nullable = nullable
-
     def load(self, obj):
         if not isinstance(obj, (unicode, type(None))):
             raise ParseError("%r not a unicode object" % obj)
@@ -43,10 +40,9 @@ class Text(Field):
 class Bytes(Field):
     """Binary data"""
 
-    def __init__(self, custom_encoding=False, nullable=True, **kwargs):
+    def __init__(self, custom_encoding=False, **kwargs):
         super(Bytes, self).__init__(**kwargs)
         self.custom_encoding = custom_encoding
-        self.nullable = nullable
 
     def _load_utf8_codepoints(self, obj):
         return obj.encode("iso-8859-1")
@@ -77,10 +73,14 @@ class Bytes(Field):
 
 
 class List(Field):
-    def __init__(self, field_type=Text(), nullable=False, **kwargs):
-        super(List, self).__init__(**kwargs)
+    """List of one other Field type
+
+    Differs from other fields in that it is not nullable
+    and defaults to empty array instead of null
+    """
+    def __init__(self, field_type=Text(), nullable=False, default=[], **kwargs):
+        super(List, self).__init__(nullable=nullable, default=default, **kwargs)
         self.field_type = field_type
-        self.nullable = nullable
 
     def load(self, obj):
         if not isinstance(obj, list):
@@ -95,14 +95,17 @@ class List(Field):
     def set_parent(self, schema):
         self.field_type.set_parent(schema)
 
+    def default_value(self):
+        #  avoid default-sharing between records
+        return copy.deepcopy(self.default)
+
 
 class Enum(Field):
     _field_type = Text()  # don't change
 
-    def __init__(self, values, nullable=True, **kwargs):
+    def __init__(self, values, **kwargs):
         super(Enum, self).__init__(**kwargs)
         self.values = set(values)
-        self.nullable = nullable
 
     def dump(self, obj):
         if obj not in self.values:
@@ -121,9 +124,8 @@ class Enum(Field):
 
 
 class Integer(Field):
-    def __init__(self, nullable=True, size=8, **kwargs):
+    def __init__(self, size=8, **kwargs):
         super(Integer, self).__init__(**kwargs)
-        self.nullable = nullable
         self.size = size
 
     def dump(self, obj):
@@ -141,10 +143,6 @@ class Boolean(Field):
     VALUE_MAP = {True: '1', 1: '1',
                  False: '0', 0: '0'}
 
-    def __init__(self, nullable=True, **kwargs):
-        super(Boolean, self).__init__(**kwargs)
-        self.nullable = nullable
-
     def dump(self, obj):
         if obj not in self.VALUE_MAP:
             raise ValueError(
@@ -159,9 +157,8 @@ class Boolean(Field):
 
 
 class Float(Field):
-    def __init__(self, nullable=True, size=8, **kwargs):
+    def __init__(self, size=8, **kwargs):
         super(Float, self).__init__(**kwargs)
-        self.nullable = nullable
         self.size = size
 
     def dump(self, obj):
@@ -176,10 +173,6 @@ class Float(Field):
 
 
 class Date(Text):
-    def __init__(self, nullable=True, **kwargs):
-        super(Date, self).__init__(**kwargs)
-        self.nullable = nullable
-
     def dump(self, obj):
         if not isinstance(obj, datetime.date):
             raise ValueError("Invalid value for Date field: %r" % obj)
@@ -193,10 +186,6 @@ class Date(Text):
 
 
 class DateTime(Text):
-    def __init__(self, nullable=True, **kwargs):
-        super(DateTime, self).__init__(**kwargs)
-        self.nullable = nullable
-
     def dump(self, obj):
         if not isinstance(obj, datetime.datetime):
             raise ValueError("Invalid value for DateTime field: %r" % obj)
@@ -211,17 +200,18 @@ class DateTime(Text):
             raise ValueError("Invalid value for DateField field: %r" % obj)
 
 
+# special value for SubRecord's record_class parameter
+# that signifies a SubRecord accepting records of the
+# same type as the container/parent Record.
 SELF = object()
 
 
 class SubRecord(Field):
-    "Field for storing :class:`record.Record`s as fields "
-    "in other :class:`record.Record`s"
+    """"Field for storing other :class:`record.Record`s"""
 
-    def __init__(self, record_class, nullable=True, **kwargs):
+    def __init__(self, record_class, **kwargs):
         super(SubRecord, self).__init__(**kwargs)
         self._record_class = record_class
-        self.nullable = nullable
 
     def dump(self, obj):
         if not isinstance(obj, self._record_class):
@@ -233,15 +223,29 @@ class SubRecord(Field):
         return core.from_json_compatible(self._record_class, obj)
 
     def set_parent(self, schema):
+        """This method gets called by the metaclass
+        once the container class has been created
+        to let the field store a reference to its
+        parent if needed. Its needed for SubRecords
+        in case it refers to the container record.
+        """
         if self._record_class == SELF:
             self._record_class = schema
 
+    def default_value(self):
+        #  avoid default-sharing between records
+        return copy.deepcopy(self.default)
+
 
 class Map(Field):
-    def __init__(self, value_type, nullable=False, **kwargs):
-        super(Map, self).__init__(**kwargs)
+    """List of one other Field type
+
+    Differs from other fields in that it is not nullable
+    and defaults to empty array instead of null
+    """
+    def __init__(self, value_type, nullable=False, default={}, **kwargs):
+        super(Map, self).__init__(nullable=nullable, default=default, **kwargs)
         self.value_type = value_type
-        self.nullable = nullable
         self.key_type = Text()
 
     def load(self, obj):
@@ -263,3 +267,7 @@ class Map(Field):
 
     def set_parent(self, schema):
         self.value_type.set_parent(schema)
+
+    def default_value(self):
+        #  avoid default-sharing between records
+        return copy.deepcopy(self.default)

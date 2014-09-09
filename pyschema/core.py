@@ -110,13 +110,28 @@ class RecordStore(object):
         return record_class in self._recordmap.values()
 
 
+# special value to signify that a field has no default value (as opposed to the default default None)
+NO_DEFAULT = object()
+_UNTOUCHED = object()
+
+
 class Field(object):
     __metaclass__ = ABCMeta
     _next_index = 0
 
-    def __init__(self, description=None):
+    def __init__(self, description=None, nullable=True, default=_UNTOUCHED):
         self.description = description
         self._index = Field._next_index
+        self.nullable = nullable
+        if default is _UNTOUCHED:
+            # if default isn't explicitly set
+            # use None for Nullables, and NO_DEFAULT for others
+            if nullable:
+                default = None
+            else:
+                default = NO_DEFAULT
+
+        self.default = default
         Field._next_index += 1  # used for arg order in initialization
 
     def __repr__(self):
@@ -170,6 +185,8 @@ class Field(object):
             setattr(cls, item_name, item)
         return mixin_cls
 
+    def default_value(self):
+        return self.default
 
 auto_store = RecordStore()
 
@@ -284,8 +301,8 @@ class Record(object):
             # is to prevent accidental misuse of a changed schema
             raise TypeError('Non-keyword arguments not allowed'
                             ' when initializing Records')
-        for k, _ in self._schema:  # None-defualt everything
-            object.__setattr__(self, k, None)
+        for k, field_type in self._schema:  # None-defualt everything
+            object.__setattr__(self, k, field_type.default_value())
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 

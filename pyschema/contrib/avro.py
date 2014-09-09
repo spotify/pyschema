@@ -65,10 +65,28 @@ class IntegerMixin:
 @Field.mixin
 class FieldMixin:
     def avro_type_schema(self, state):
+        """Full type specification for the field
+
+        I.e. the same as would go into the "type" field.
+        For most field, only simplified_avro_type_schema has
+        to be implemented.
+        """
+        simple_type = self.simplified_avro_type_schema(state)
         if self.nullable:
-            return [self.avro_type_name, "null"]
+            # first value in union needs to be same as default
+            if self.default in (None, core.NO_DEFAULT):
+                return ["null", simple_type]
+            else:
+                return [simple_type, "null"]
         else:
-            return self.avro_type_name
+            return simple_type
+
+    def simplified_avro_type_schema(self, state):
+        """The basic avro type for this field
+
+        Not including nullability.
+        """
+        return self.avro_type_name
 
     def avro_dump(self, o):
         if o is None:
@@ -90,18 +108,17 @@ class FieldMixin:
             else:
                 return self.load(o)
 
+    def avro_default_value(self):
+        return self.default
+
 
 @List.mixin
 class ListMixin:
-    def avro_type_schema(self, state):
-        t = {
+    def simplified_avro_type_schema(self, state):
+        return {
             "type": "array",
             "items": self.field_type.avro_type_schema(state)
         }
-        if self.nullable:
-            return [t, "null"]
-        else:
-            return t
 
     def avro_dump(self, obj):
         if obj is None:
@@ -128,31 +145,18 @@ class ListMixin:
 ### `Enum` extensions
 @Enum.mixin
 class EnumMixin:
-    def avro_type_schema(self, state):
-        if self.nullable:
-            return [
-                {
-                    "type": "enum",
-                    "name": self.avro_type_name,
-                    "symbols": list(self.values)
-                },
-                "null"
-            ]
-        else:
-            return {
-                "type": "enum",
-                "name": self.avro_type_name,
-                "symbols": list(self.values)
-            }
+    def simplified_avro_type_schema(self, state):
+        return {
+            "type": "enum",
+            "name": self.avro_type_name,
+            "symbols": list(self.values)
+        }
 
 
 @SubRecord.mixin
 class SubRecordMixin:
-    def avro_type_schema(self, state):
-        if self.nullable:
-            return [get_schema_dict(self._record_class, state), "null"]
-        else:
-            return get_schema_dict(self._record_class, state)
+    def simplified_avro_type_schema(self, state):
+        return get_schema_dict(self._record_class, state)
 
     @property
     def avro_type_name(self):
@@ -187,16 +191,12 @@ class SubRecordMixin:
 
 @Map.mixin
 class MapMixin:
-    def avro_type_schema(self, state):
+    def simplified_avro_type_schema(self, state):
         assert isinstance(self.key_type, Text)
-        m = {
+        return {
             "type": "map",
             "values": self.value_type.avro_type_schema(state)
         }
-        if self.nullable:
-            return [m, "null"]
-        else:
-            return m
 
     def avro_dump(self, obj):
         if obj is None:
@@ -261,6 +261,8 @@ def get_schema_dict(record, state=None):
             "name": field_name,
             "type": field_type.avro_type_schema(state)
         }
+        if field_type.default is not core.NO_DEFAULT:
+            field_spec["default"] = field_type.avro_default_value()
         avro_fields.append(field_spec)
 
     avro_record["fields"] = avro_fields

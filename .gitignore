@@ -1,3 +1,9 @@
 *.pyc
 *.pyo
 *.nicesetup
+docs/_build
+docs/_api
+docs/README.rst
+build
+dist
+docs/.ipynb_checkpoints

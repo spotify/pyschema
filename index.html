@@ -1,0 +1,522 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PySchema &mdash; PySchema 1.0a1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0a1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PySchema 1.0a1 documentation" href="#" />
+    <link rel="next" title="pyschema package" href="_api/pyschema.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="_api/pyschema.html" title="pyschema package"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">PySchema 1.0a1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+<div class="section" id="pyschema">
+<h1>PySchema<a class="headerlink" href="#pyschema" title="Permalink to this headline">¶</a></h1>
+<p>PySchema is a library for Python class declaration with typed fields
+that can be introspected and have data contracts associated with them.
+This allows for better data integrity checks when
+serializing/deserializing data and safe interaction with external tools
+that require typed data.</p>
+<p>The foremost design principle when creating the library was to keep the
+definitions very concise and easy to read. Inspiration was taken from
+Django&#8217;s ORM and the main use cases in mind has been database
+interaction (Postgres) and Apache Avro schema/datum generation.</p>
+<p>It has been tested on Python 2.6 and Python 2.7</p>
+<div class="section" id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_api/pyschema.html">pyschema package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="_api/pyschema.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="_api/pyschema.contrib.html">pyschema.contrib package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#module-pyschema.contrib.avro">pyschema.contrib.avro module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#module-pyschema.contrib.avro_to_pyschema">pyschema.contrib.avro_to_pyschema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#module-pyschema.contrib.jsonschema">pyschema.contrib.jsonschema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#module-pyschema.contrib.luigi">pyschema.contrib.luigi module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#module-pyschema.contrib.postgres">pyschema.contrib.postgres module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="_api/pyschema.contrib.html#module-pyschema.contrib">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="_api/pyschema.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_api/pyschema.html#module-pyschema.core">pyschema.core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_api/pyschema.html#module-pyschema.types">pyschema.types module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_api/pyschema.html#module-pyschema">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">Record</span></tt> base class is the easiest way to define schemas. Typed
+fields in the schema are defined using subclasses of <tt class="docutils literal"><span class="pre">Field</span></tt>. Standard
+field types are defined in <tt class="docutils literal"><span class="pre">pyschema.types</span></tt> and are also aliased in
+the pyschema package.</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">pyschema</span> <span class="kn">import</span> <span class="n">Record</span><span class="p">,</span> <span class="n">dumps</span><span class="p">,</span> <span class="n">loads</span>
+<span class="kn">from</span> <span class="nn">pyschema.types</span> <span class="kn">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<div class="section" id="declaration">
+<h3>Declaration<a class="headerlink" href="#declaration" title="Permalink to this headline">¶</a></h3>
+<p>To define a schema, use a Python class declaration inheriting from
+<tt class="docutils literal"><span class="pre">pyschema.Record</span></tt>.</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyRecord</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="n">Text</span><span class="p">()</span>
+    <span class="n">bar</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="class-instantiation">
+<h3>Class instantiation<a class="headerlink" href="#class-instantiation" title="Permalink to this headline">¶</a></h3>
+<p>Like a typical Python class instantiation. All fields are keyword
+arguments to the constructor of the record.</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">r</span> <span class="o">=</span> <span class="n">MyRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="s">&quot;hej&quot;</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="member-access">
+<h3>Member access<a class="headerlink" href="#member-access" title="Permalink to this headline">¶</a></h3>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">r</span><span class="o">.</span><span class="n">foo</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="s">&#39;hej&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="default-string-representation-repr">
+<h3>Default string representation/repr<a class="headerlink" href="#default-string-representation-repr" title="Permalink to this headline">¶</a></h3>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">print</span> <span class="n">r</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">MyRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="s">&#39;hej&#39;</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="simple-json-serialization">
+<h3>Simple json serialization<a class="headerlink" href="#simple-json-serialization" title="Permalink to this headline">¶</a></h3>
+<p>Creates a json compatible string representing the object. A special
+<tt class="docutils literal"><span class="pre">$schema</span></tt> field is added to the json to allow parsing of the record
+without prior knowledge of the which schema to use. The name of this
+special field can be set to something else using the
+<tt class="docutils literal"><span class="pre">pyschema.core.set_schema_name_field</span></tt></p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">s</span> <span class="o">=</span> <span class="n">dumps</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">s</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span><span class="s">&quot;$schema&quot;</span><span class="p">:</span> <span class="s">&quot;MyRecord&quot;</span><span class="p">,</span> <span class="s">&quot;foo&quot;</span><span class="p">:</span> <span class="s">&quot;hej&quot;</span><span class="p">,</span> <span class="s">&quot;bar&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>####... and deserialization</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">o</span> <span class="o">=</span> <span class="n">loads</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">o</span><span class="o">.</span><span class="n">bar</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="mi">3</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="built-in-types">
+<h2>Built-in types<a class="headerlink" href="#built-in-types" title="Permalink to this headline">¶</a></h2>
+<p>PySchema comes with a standard set of field types that can be used to
+represent the most commonly used data types</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">Text</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">Integer</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">Float</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">Bytes</span></tt> - for binary data, the equivalent of Python &lt; 3 <tt class="docutils literal"><span class="pre">str</span></tt> or
+Python 3 <tt class="docutils literal"><span class="pre">bytes</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">Boolean</span></tt> - True or False</li>
+<li><tt class="docutils literal"><span class="pre">Date</span></tt> - <tt class="docutils literal"><span class="pre">datetime.date</span></tt> objects</li>
+<li><tt class="docutils literal"><span class="pre">DateTime</span></tt> - <tt class="docutils literal"><span class="pre">datetime.datetime</span></tt> objects</li>
+<li><tt class="docutils literal"><span class="pre">Enum</span></tt> - only allows a preset of text values (specified as an
+arguemnt to the constructor)</li>
+<li><tt class="docutils literal"><span class="pre">List</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">Map</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">SubRecord</span></tt></li>
+</ul>
+<p>Some types function as containers for other types.</p>
+<div class="section" id="list">
+<h3>List<a class="headerlink" href="#list" title="Permalink to this headline">¶</a></h3>
+<p>Lists allow storage of ordered sequences of a single type of data,
+specified as an argument to the field constructor</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">RecordWithList</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Integer</span><span class="p">())</span>
+
+<span class="n">RecordWithList</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">RecordWithList</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="map">
+<h3>Map<a class="headerlink" href="#map" title="Permalink to this headline">¶</a></h3>
+<p>Storage for dictionaries mapping from strings to values of a single
+type, specified as an argument to the field constructor</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">RecordWithMap</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="n">Map</span><span class="p">(</span><span class="n">Boolean</span><span class="p">())</span>
+
+<span class="n">RecordWithMap</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="p">{</span><span class="s">u&quot;word&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">})</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">RecordWithMap</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="p">{</span><span class="s">u&#39;word&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">})</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="subrecord">
+<h3>SubRecord<a class="headerlink" href="#subrecord" title="Permalink to this headline">¶</a></h3>
+<p>SubRecords allow for nesting of records, i.e. storing records of some
+sort as fields in other records. SubRecord takes an argument being the
+schema (i.e. Record class) of the intended stored object. Recursive
+nesting can also be used by supplying <tt class="docutils literal"><span class="pre">pyschema.SELF</span></tt> as the schema
+type to SubRecord, in which case the field accepts records of the parent
+record type.</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">NestedRecord</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="n">SubRecord</span><span class="p">(</span><span class="n">MyRecord</span><span class="p">)</span>  <span class="c"># MyRecord is defined above...</span>
+
+<span class="n">NestedRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="n">MyRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="s">&quot;foo&quot;</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">NestedRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="n">MyRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">NestedSelfRecord</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">foo</span> <span class="o">=</span> <span class="n">SubRecord</span><span class="p">(</span><span class="n">SELF</span><span class="p">)</span>
+    <span class="n">bar</span> <span class="o">=</span> <span class="n">Text</span><span class="p">()</span>
+
+<span class="n">NestedSelfRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="n">NestedSelfRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="s">&quot;Second&quot;</span><span class="p">),</span> <span class="n">bar</span><span class="o">=</span><span class="s">&quot;First&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">NestedSelfRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="n">NestedSelfRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="s">&#39;Second&#39;</span><span class="p">),</span> <span class="n">bar</span><span class="o">=</span><span class="s">&#39;First&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Complex types are field types just like any other, so they can be
+combined to create complex data structures</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Part</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">()</span>
+    <span class="n">good</span> <span class="o">=</span> <span class="n">Boolean</span><span class="p">()</span>
+    <span class="n">attributes</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Text</span><span class="p">())</span>
+
+<span class="k">class</span> <span class="nc">AdvancedRecord</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Text</span><span class="p">()</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">Map</span><span class="p">(</span><span class="n">SubRecord</span><span class="p">(</span><span class="n">Part</span><span class="p">))</span>
+
+<span class="n">AdvancedRecord</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s">u&quot;tool_1&quot;</span><span class="p">,</span>
+    <span class="n">parts</span><span class="o">=</span><span class="p">{</span>
+        <span class="s">u&quot;moo&quot;</span><span class="p">:</span> <span class="n">Part</span><span class="p">(</span>
+            <span class="n">value</span><span class="o">=</span><span class="s">u&quot;buzz&quot;</span><span class="p">,</span>
+            <span class="n">good</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;something&quot;</span><span class="p">,</span> <span class="s">&quot;other&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">AdvancedRecord</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">u&#39;tool_1&#39;</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="p">{</span><span class="s">u&#39;moo&#39;</span><span class="p">:</span> <span class="n">Part</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s">u&#39;buzz&#39;</span><span class="p">,</span> <span class="n">good</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;something&#39;</span><span class="p">,</span> <span class="s">&#39;other&#39;</span><span class="p">])})</span>
+</pre></div>
+</div>
+<div class="section" id="defaults">
+<h4>Defaults<a class="headerlink" href="#defaults" title="Permalink to this headline">¶</a></h4>
+<p>All fields are optional in the constructor, left-out fields are <tt class="docutils literal"><span class="pre">None</span></tt>
+by default, except for the <tt class="docutils literal"><span class="pre">Map</span></tt> and <tt class="docutils literal"><span class="pre">List</span></tt> types where they default
+to their respective empty containers <tt class="docutils literal"><span class="pre">{}</span></tt> and <tt class="docutils literal"><span class="pre">[]</span></tt>.</p>
+<p>MyRecord(bar=10)</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OtherRecord</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">bar</span> <span class="o">=</span> <span class="n">Map</span><span class="p">(</span><span class="n">Float</span><span class="p">())</span>
+    <span class="n">baz</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Integer</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">OtherRecord</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">OtherRecord</span><span class="p">(</span><span class="n">bar</span><span class="o">=</span><span class="p">{},</span> <span class="n">baz</span><span class="o">=</span><span class="p">[])</span>
+</pre></div>
+</div>
+<p>Fails at serialization time when types don&#8217;t match</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">broken_record</span> <span class="o">=</span> <span class="n">MyRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="c"># object creation works with any types (to allow for temporary unallowed values)</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">print</span> <span class="n">broken_record</span>  <span class="c"># repr format also still works</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">MyRecord</span><span class="p">(</span><span class="n">foo</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">bar</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">print</span> <span class="n">dumps</span><span class="p">(</span><span class="n">broken_record</span><span class="p">)</span>  <span class="c"># raises an Exception because 5 isn&#39;t a text format</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+
+&lt;ipython-input-17-92114c8b8749&gt; in &lt;module&gt;()
+----&gt; 1 print dumps(broken_record)  # raises an Exception because 5 isn&#39;t a text format
+
+
+/Users/freider/Code/spotify/pyschema/pyschema/core.py in dumps(obj, attach_schema_name)
+    494
+    495 def dumps(obj, attach_schema_name=True):
+--&gt; 496     json_dct = to_json_compatible(obj)
+    497     if attach_schema_name:
+    498         json_dct[SCHEMA_FIELD_NAME] = obj._schema_name
+
+
+/Users/freider/Code/spotify/pyschema/pyschema/core.py in to_json_compatible(record)
+    384         val = getattr(record, fname)
+    385         if val is not None:
+--&gt; 386             d[fname] = f.dump(val)
+    387     return d
+    388
+
+
+/Users/freider/Code/spotify/pyschema/pyschema/types.pyc in dump(self, obj)
+     34             except:
+     35                 raise ValueError(
+---&gt; 36                     &quot;%r is not a valid UTF-8 string&quot; % obj
+     37                 )
+     38
+
+
+ValueError: 5 is not a valid UTF-8 string
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="extending-pyschema">
+<h2>Extending PySchema<a class="headerlink" href="#extending-pyschema" title="Permalink to this headline">¶</a></h2>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">datetime</span>
+
+<span class="k">class</span> <span class="nc">Date</span><span class="p">(</span><span class="n">Field</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y-%m-</span><span class="si">%d</span><span class="s">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">part</span><span class="p">)</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;-&#39;</span><span class="p">)))</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyOtherRecord</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">date</span> <span class="o">=</span> <span class="n">Date</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">s</span> <span class="o">=</span> <span class="n">dumps</span><span class="p">(</span><span class="n">MyOtherRecord</span><span class="p">(</span><span class="n">date</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2013</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">)))</span>
+<span class="k">print</span> <span class="s">&quot;Serialized:&quot;</span><span class="p">,</span> <span class="n">s</span>
+<span class="k">print</span> <span class="s">&quot;Reloaded:&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">loads</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>Serialized: {&quot;date&quot;: &quot;2013-10-07&quot;, &quot;$schema&quot;: &quot;MyOtherRecord&quot;}
+Reloaded: datetime.date(2013, 10, 7)
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="n">Text</span><span class="o">.</span><span class="n">postgres_type</span> <span class="o">=</span> <span class="s">&quot;TEXT&quot;</span>
+<span class="n">Integer</span><span class="o">.</span><span class="n">postgres_type</span> <span class="o">=</span> <span class="s">&quot;INTEGER&quot;</span>
+
+<span class="nd">@List.mixin</span>
+<span class="k">class</span> <span class="nc">ListPostgresMixin</span><span class="p">:</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">postgres_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_type</span><span class="o">.</span><span class="n">postgres_type</span> <span class="o">+</span> <span class="s">&quot; ARRAY&quot;</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">create_table_from_record</span><span class="p">(</span><span class="n">schema</span><span class="p">):</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">field_type</span> <span class="ow">in</span> <span class="n">schema</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">field_type</span><span class="o">.</span><span class="n">postgres_type</span><span class="p">))</span>
+    <span class="k">return</span> <span class="s">&quot;CREATE TABLE </span><span class="si">%s</span><span class="s"> (&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">,)</span> <span class="o">+</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;)&quot;</span>
+</pre></div>
+</div>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyTable</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">list_name</span> <span class="o">=</span> <span class="n">Text</span><span class="p">()</span>
+    <span class="n">numbers</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Integer</span><span class="p">())</span>
+
+<span class="n">create_table_from_record</span><span class="p">(</span><span class="n">MyTable</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="s">&#39;CREATE TABLE MyTable (list_name TEXT, numbers INTEGER ARRAY)&#39;</span>
+</pre></div>
+</div>
+<p>The following will trigger an error since we haven&#8217;t mixed in the
+<tt class="docutils literal"><span class="pre">postgres_type</span></tt> field for the <tt class="docutils literal"><span class="pre">Map</span></tt> field type in this example.</p>
+<div class="code python highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Impossibru</span><span class="p">(</span><span class="n">Record</span><span class="p">):</span>
+    <span class="n">numbers</span> <span class="o">=</span> <span class="n">Map</span><span class="p">(</span><span class="n">Integer</span><span class="p">())</span>
+
+<span class="n">create_table_from_record</span><span class="p">(</span><span class="n">Impossibru</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+
+&lt;ipython-input-24-65f7b1968e1a&gt; in &lt;module&gt;()
+      2     numbers = Map(Integer())
+      3
+----&gt; 4 create_table_from_record(Impossibru)
+
+
+&lt;ipython-input-22-61f11a5f0ce7&gt; in create_table_from_record(schema)
+      2     parts = []
+      3     for name, field_type in schema._fields.iteritems():
+----&gt; 4         parts.append(&quot;%s %s&quot; % (name, field_type.postgres_type))
+      5     return &quot;CREATE TABLE %s (&quot; % (schema._schema_name,) + &quot;, &quot;.join(parts) + &quot;)&quot;
+
+
+AttributeError: &#39;Map&#39; object has no attribute &#39;postgres_type&#39;
+</pre></div>
+</div>
+</div>
+<div class="section" id="under-the-hood">
+<h2>Under the hood<a class="headerlink" href="#under-the-hood" title="Permalink to this headline">¶</a></h2>
+<p>In this section, a brief explanation of the underlying architecture of
+the package is presented.</p>
+<p>PySchema utilizes a Schema metaclass for the Record class that hooks
+into the class declaration logic of the python interpreter.</p>
+<p>When a subclass of Record is <em>declared</em>, the metaclass will go through
+the class properties and create some helper variables needed for schema
+introspection and general setup. To be able to keep ordering of fields,
+a counter is increased every time a Field is declared and this is used a
+the sorting key in the ordered schema.</p>
+<p>The metaclass is responsible for setting up the following magic
+variables on the schema <em>class</em>: * <tt class="docutils literal"><span class="pre">_fields</span></tt> - contains an
+OrderedDict of (<em>name</em>, <em>field</em>) mappings, where <em>name</em> is the field
+name and <em>field</em> is the Field instance, i.e. the type definition
+instance for the field. E.g. <tt class="docutils literal"><span class="pre">(&quot;foo&quot;,</span> <span class="pre">Integer(size=4))</span></tt> *
+<tt class="docutils literal"><span class="pre">_schema_name</span></tt> - the name of the schema. Typically the same as the
+class name.</p>
+<p>When a Record is instantiated, a new object is created where each field
+is filled with its default value.</p>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PySchema</a><ul>
+<li><a class="reference internal" href="#api-reference">API Reference</a></li>
+<li><a class="reference internal" href="#usage">Usage</a><ul>
+<li><a class="reference internal" href="#declaration">Declaration</a></li>
+<li><a class="reference internal" href="#class-instantiation">Class instantiation</a></li>
+<li><a class="reference internal" href="#member-access">Member access</a></li>
+<li><a class="reference internal" href="#default-string-representation-repr">Default string representation/repr</a></li>
+<li><a class="reference internal" href="#simple-json-serialization">Simple json serialization</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#built-in-types">Built-in types</a><ul>
+<li><a class="reference internal" href="#list">List</a></li>
+<li><a class="reference internal" href="#map">Map</a></li>
+<li><a class="reference internal" href="#subrecord">SubRecord</a><ul>
+<li><a class="reference internal" href="#defaults">Defaults</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#extending-pyschema">Extending PySchema</a></li>
+<li><a class="reference internal" href="#under-the-hood">Under the hood</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="_api/pyschema.html"
+                        title="next chapter">pyschema package</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="_api/pyschema.html" title="pyschema package"
+             >next</a> |</li>
+        <li><a href="#">PySchema 1.0a1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Elias Freider.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

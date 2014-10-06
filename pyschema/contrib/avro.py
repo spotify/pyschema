@@ -156,15 +156,15 @@ class EnumMixin:
 @SubRecord.mixin
 class SubRecordMixin:
     def simplified_avro_type_schema(self, state):
-        return get_schema_dict(self._record_class, state)
+        return get_schema_dict(self._schema, state)
 
     @property
     def avro_type_name(self):
-        if hasattr(self._record_class, '_avro_namespace_'):
-            return '.'.join([self._record_class._avro_namespace_,
-                             self._record_class._record_name])
+        if hasattr(self._schema, '_avro_namespace_'):
+            return '.'.join([self._schema._avro_namespace_,
+                             self._schema._schema_name])
         else:
-            return self._record_class._record_name
+            return self._schema._schema_name
 
     def avro_dump(self, obj):
         if obj is None:
@@ -179,12 +179,12 @@ class SubRecordMixin:
             return None
         if self.nullable:
             return from_json_compatible(
-                self._record_class,
+                self._schema,
                 obj[self.avro_type_name]
             )
         else:
             return from_json_compatible(
-                self._record_class,
+                self._schema,
                 obj
             )
 
@@ -239,10 +239,10 @@ def get_schema_dict(record, state=None):
 
     if hasattr(record, '_avro_namespace_'):
         namespace = record._avro_namespace_
-        record_name = namespace + '.' + record._record_name
+        record_name = namespace + '.' + record._schema_name
     else:
         namespace = None
-        record_name = record._record_name
+        record_name = record._schema_name
 
     if record_name in state.declared_records:
         return record_name
@@ -250,13 +250,13 @@ def get_schema_dict(record, state=None):
 
     avro_record = {
         "type": "record",
-        "name": record._record_name,
+        "name": record._schema_name,
     }
     if namespace:
         avro_record["namespace"] = namespace
 
     avro_fields = []
-    for field_name, field_type in record._schema:
+    for field_name, field_type in record._fields.iteritems():
         field_spec = {
             "name": field_name,
             "type": field_type.avro_type_schema(state)
@@ -279,24 +279,24 @@ def dumps(record):
 
 def to_json_compatible(record):
     dct = {}
-    for name, fieldtype in record._schema:
+    for name, fieldtype in record._fields.iteritems():
         value = getattr(record, name)
         dct[name] = fieldtype.avro_dump(value)
     return dct
 
 
-def from_json_compatible(record_class, dct):
+def from_json_compatible(schema, dct):
     "Load from json-encodable"
     kwargs = {}
 
     for key in dct:
-        field_type = record_class._field_names.get(key)
+        field_type = schema._fields.get(key)
         if field_type is None:
-            raise core.ParseError("Unexpected field encountered in line for record %s: %s" % (record_class.__name__, key))
+            raise core.ParseError("Unexpected field encountered in line for record %s: %s" % (schema.__name__, key))
         kwargs[key] = field_type.avro_load(dct[key])
 
-    return record_class(**kwargs)
+    return schema(**kwargs)
 
 
-def loads(s, record_store=None, record_class=None):
-    return core.loads(s, record_store, record_class, from_json_compatible)
+def loads(s, record_store=None, schema=None):
+    return core.loads(s, record_store, schema, from_json_compatible)

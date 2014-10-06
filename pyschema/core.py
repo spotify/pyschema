@@ -38,30 +38,32 @@ Internals:
 
 A valid PySchema class is required to contain the following class variables:
 
-_schema:
-    A list of (`field_name`, `field_type`) tuples.
-    `field_type` should be an instance of a Field subclass
+_fields:
+    An OrderedDict of `field_name` => `field_type`
+    Where `field_type` is an instance of a Field subclass
 
-_record_name:
+_schema_name:
     The qualifying name for this schema. This is used for registering a record
-    in a `RecordStore` and for auto-identification of serialized records.
-    Should be unique within a specific RecordStore, so if auto registering is
+    in a `SchemaStore` and for auto-identification of serialized records.
+    Should be unique within a specific SchemaStore, so if auto registering is
     used it should be unique within the execution chain of the current program.
-
-_field_names:
-    A set with the attribute names (the keys of _schema)
 
 """
 from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
 from itertools import izip
-
-try:
-    import simplejson as json
-except:
-    import json
+from collections import OrderedDict
 import warnings
 import types
+import simplejson as json
+
+
+SCHEMA_FIELD_NAME = "$schema"
+
+
+def set_schema_name_field(name):
+    global SCHEMA_FIELD_NAME
+    SCHEMA_FIELD_NAME = name
 
 
 class ParseError(Exception):
@@ -69,49 +71,52 @@ class ParseError(Exception):
     pass
 
 
-class RecordStore(object):
+class SchemaStore(object):
     def __init__(self):
-        self._recordmap = {}
+        self._schema_map = {}
 
     def __str__(self):
-        return str(self._recordmap.keys())
+        return str(self._schema_map.keys())
 
-    def add_record(self, record_class):
+    def add_record(self, schema):
         """ Add record class to record store for retrieval at record load time.
 
             Can be used as a class decorator
         """
-        existing = self._recordmap.get(record_class.__name__, None)
+        existing = self._schema_map.get(schema.__name__, None)
         if existing:
             warnings.warn(
                 "{prev_module}.{class_name} replaces record from {new_module}"
-                .format(class_name=record_class.__name__,
+                .format(class_name=schema.__name__,
                         prev_module=existing.__module__,
-                        new_module=record_class.__module__))
+                        new_module=schema.__module__))
 
-        self._recordmap[record_class.__name__] = record_class
-        return record_class
+        self._schema_map[schema.__name__] = schema
+        return schema
 
-    def remove_record(self, record_class):
-        del self._recordmap[record_class.__name__]
+    def remove_record(self, schema):
+        del self._schema_map[schema.__name__]
 
     def get(self, record_name):
-        return self._recordmap[record_name]
+        return self._schema_map[record_name]
 
     def clear(self):
-        self._recordmap.clear()
+        self._schema_map.clear()
 
     def clone(self):
-        r = RecordStore()
-        r._recordmap = self._recordmap.copy()
+        r = SchemaStore()
+        r._schema_map = self._schema_map.copy()
         return r
 
-    def __contains__(self, record_class):
-        return record_class in self._recordmap.values()
+    def __contains__(self, schema):
+        return schema in self._schema_map.values()
 
 
-# special value to signify that a field has no default value (as opposed to the default default None)
+# NO_DEFAULT is a special value to signify that a field has no default value
+# and should fail to serialize unless a value has been assigned
+# it's the default default-value for all non-nullable fields
 NO_DEFAULT = object()
+
 _UNTOUCHED = object()
 
 
@@ -138,7 +143,9 @@ class Field(object):
         return self.__class__.__name__
 
     def set_parent(self, schema):
-        pass  # no-op, but can be overridden by types that need parent references
+        # no-op by default but can be overridden by types
+        # that need parent references
+        pass
 
     @abstractmethod
     def dump(self, obj):
@@ -188,7 +195,7 @@ class Field(object):
     def default_value(self):
         return self.default
 
-auto_store = RecordStore()
+auto_store = SchemaStore()
 
 
 class PySchema(ABCMeta):
@@ -209,7 +216,7 @@ class PySchema(ABCMeta):
         cls = ABCMeta.__new__(metacls, name, bases, dct)
 
         # allow self-references etc.
-        for field_name, field in cls._schema:
+        for field_name, field in cls._fields.iteritems():
             field.set_parent(cls)
 
         if metacls.auto_register:
@@ -217,25 +224,42 @@ class PySchema(ABCMeta):
         return cls
 
     @classmethod
+    def _field_dupe_warning(metacls, name, fields):
+        warnings.warn(
+            "{schema}: Duplicate field definition for field{plural} {field}"
+                .format(
+                    schema=name,
+                    field=fields,
+                    plural="s" if len(fields) > 1 else ""
+                )
+        )
+
+    @classmethod
     def _get_schema_attributes(metacls, name, bases, dct):
-        base_schema = []
+        fields = OrderedDict()
         for b in bases:
-            try:
-                base_schema += b._schema
-            except AttributeError:
-                pass
+            if not isinstance(b, metacls):
+                continue
 
-        schema = []
-        for field_name, value in dct.iteritems():
-            if isinstance(value, Field):
-                schema.append((field_name, value))
+            field_intersection = set(fields) & set(b._fields)
+            if field_intersection:
+                metacls._field_dupe_warning(name, field_intersection)
+            fields.update(b._fields)
 
-        schema.sort(key=lambda x: x[1]._index)
-        schema = base_schema + schema
+        new_fields = []
+        for field_name, field_def in dct.iteritems():
+            if isinstance(field_def, Field):
+                new_fields.append((field_name, field_def))
+
+        new_fields.sort(key=lambda fd: fd[1]._index)
+        for field_name, field_def in new_fields:
+            if field_name in fields:
+                metacls._field_dupe_warning(name, (field_name,))
+            fields[field_name] = field_def
+
         return {
-            "_schema": schema,
-            "_record_name": name,
-            "_field_names": dict(schema)
+            "_fields": fields,
+            "_schema_name": name,
         }
 
     @classmethod
@@ -296,21 +320,20 @@ class Record(object):
 
     def __init__(self, *args, **kwargs):
         if args:
-            # TODO: allow this...?
             # The idea behind only allowing keyword arguments
             # is to prevent accidental misuse of a changed schema
             raise TypeError('Non-keyword arguments not allowed'
                             ' when initializing Records')
-        for k, field_type in self._schema:  # None-defualt everything
+        for k, field_type in self._fields.iteritems():
             object.__setattr__(self, k, field_type.default_value())
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
     def __setattr__(self, name, value):
-        if name not in self._field_names:
+        if name not in self._fields:
             raise AttributeError(
                 "No field %r in %s"
-                % (name, self._record_name)
+                % (name, self._schema_name)
             )
 
         super(Record, self).__setattr__(name, value)
@@ -322,19 +345,18 @@ class Record(object):
         return repr(self)
 
     def __repr__(self):
-        schema = self._schema
         strings = ('%s=%r' % (fname, getattr(self, fname))
-                   for fname, f in schema)
+                   for fname, f in self._fields.iteritems())
 
-        return self._record_name + '(' + ', '.join(strings) + ')'
+        return self._schema_name + '(' + ', '.join(strings) + ')'
 
     def __cmp__(self, other):
         if not isinstance(other, Record):
             # return default implementation cmp value
             return cmp(id(self), other)
-        if self._record_name != other._record_name:
-            return cmp(self._record_name, other._record_name)
-        fields = [x for x, _ in self._schema]
+        if self._schema_name != other._schema_name:
+            return cmp(self._schema_name, other._schema_name)
+        fields = self._fields.keys()
         a = (getattr(self, key) for key in fields)
         b = (getattr(other, key) for key in fields)
 
@@ -354,24 +376,24 @@ class Record(object):
 def to_json_compatible(record):
     "Dump record in json-encodable object format"
     d = {}
-    for fname, f in record._schema:
+    for fname, f in record._fields.iteritems():
         val = getattr(record, fname)
         if val is not None:
             d[fname] = f.dump(val)
     return d
 
 
-def from_json_compatible(record_class, dct):
+def from_json_compatible(schema, dct):
     "Load from json-encodable"
     kwargs = {}
 
     for key in dct:
-        field_type = record_class._field_names.get(key)
+        field_type = schema._fields.get(key)
         if field_type is None:
-            raise ParseError("Unexpected field encountered in line for record %s: %s" % (record_class.__name__, key))
+            raise ParseError("Unexpected field encountered in line for record %s: %s" % (schema.__name__, key))
         kwargs[key] = field_type.load(dct[key])
 
-    return record_class(**kwargs)
+    return schema(**kwargs)
 
 
 def ispyschema(schema):
@@ -393,7 +415,7 @@ def ispyschema(schema):
 def load_json_dct(
         dct,
         record_store=None,
-        record_class=None,
+        schema=None,
         loader=from_json_compatible
 ):
     """ Create a Record instance from a json-compatible dictionary
@@ -407,40 +429,41 @@ def load_json_dct(
     :param record_store:
     Record store to use for schema lookups (when $record_name field is present)
 
-    :param record_class:
+    :param schema:
     PySchema Record class for the record to load.
     This will override any $record_name fields specified in `dct`
 
     """
-    if record_class is None:
+    if schema is None:
         if record_store is None:
             record_store = auto_store
         try:
-            record_name = dct.pop("$record_name")
+            schema_name = dct.pop(SCHEMA_FIELD_NAME)
         except KeyError:
-            raise ParseError(
-                "Serialized record missing '$record_name' "
-                "record identifier and no record_class supplied"
+            raise ParseError((
+                "Serialized record missing '{0}' "
+                "record identifier and no schema supplied")
+                .format(SCHEMA_FIELD_NAME)
             )
         try:
-            record_class = record_store.get(record_name)
+            schema = record_store.get(schema_name)
         except KeyError:
             raise ParseError(
                 "Can't recognize record type %r"
-                % (record_name,), record_name)
+                % (schema_name,), schema_name)
 
-    # if record class is specified, use that instead of $record_name
-    elif "$record_name" in dct:
-        dct.pop("$record_name")
+    # if schema is explicit, use that instead of SCHEMA_FIELD_NAME
+    elif SCHEMA_FIELD_NAME in dct:
+        dct.pop(SCHEMA_FIELD_NAME)
 
-    record = loader(record_class, dct)
+    record = loader(schema, dct)
     return record
 
 
 def loads(
         s,
         record_store=None,
-        record_class=None,
+        schema=None,
         loader=from_json_compatible
 ):
     """ Create a Record instance from a json serialized dictionary
@@ -451,7 +474,7 @@ def loads(
     :param record_store:
     Record store to use for schema lookups (when $record_name field is present)
 
-    :param record_class:
+    :param schema:
     PySchema Record class for the record to load.
     This will override any $record_name fields specified in `s`
 
@@ -460,14 +483,14 @@ def loads(
         s = s.decode('utf8')
     if s.startswith(u"{"):
         json_dct = json.loads(s)
-        return load_json_dct(json_dct, record_store, record_class, loader)
+        return load_json_dct(json_dct, record_store, schema, loader)
     else:
         raise ParseError("Not a json record")
 
 
-def dumps(obj, attach_record_name=True):
+def dumps(obj, attach_schema_name=True):
     json_dct = to_json_compatible(obj)
-    if attach_record_name:
-        json_dct["$record_name"] = obj._record_name
+    if attach_schema_name:
+        json_dct[SCHEMA_FIELD_NAME] = obj._schema_name
     json_string = json.dumps(json_dct)
     return json_string

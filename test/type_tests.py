@@ -12,7 +12,7 @@ class TypeTests(TestCase):
         rec = record_cls(field=input_value)
         self.assertEquals(rec.field, input_value)
         serialized = self.dumper(rec)
-        deserialized = self.loader(serialized, record_class=record_cls)
+        deserialized = self.loader(serialized, schema=record_cls)
         self.assertEquals(deserialized.field, output_value)
 
     def assertCompliant(self, record_cls, allowed_values, forbidden_values):

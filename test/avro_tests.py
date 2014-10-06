@@ -223,7 +223,7 @@ class TestAvro(BaseTest):
         avro_string = pyschema.contrib.avro.dumps(s)
         new_s = pyschema.contrib.avro.loads(
             avro_string,
-            record_class=SomeAvroRecord
+            schema=SomeAvroRecord
         )
         self.assertEquals(new_s.a, u"yolo")
         self.assertEquals(new_s.b, 4)
@@ -260,7 +260,7 @@ class TestAvro(BaseTest):
 
         lr = ListRecord()
         str_rec = pyschema.contrib.avro.dumps(lr)
-        reborn = pyschema.contrib.avro.loads(str_rec, record_class=ListRecord)
+        reborn = pyschema.contrib.avro.loads(str_rec, schema=ListRecord)
         self.assertTrue(isinstance(reborn.a, list))
 
     def test_list_roundtrip(self):
@@ -270,7 +270,7 @@ class TestAvro(BaseTest):
 
         lr = ListRecord(a=["c", "a", "b"])
         str_rec = pyschema.contrib.avro.dumps(lr)
-        reborn = pyschema.contrib.avro.loads(str_rec, record_class=ListRecord)
+        reborn = pyschema.contrib.avro.loads(str_rec, schema=ListRecord)
 
         self.assertEquals(
             tuple(reborn.a),
@@ -284,7 +284,7 @@ class TestAvro(BaseTest):
 
         mr = MapRecord()
         str_rec = pyschema.contrib.avro.dumps(mr)
-        reborn = pyschema.contrib.avro.loads(str_rec, record_class=MapRecord)
+        reborn = pyschema.contrib.avro.loads(str_rec, schema=MapRecord)
         self.assertTrue(isinstance(reborn.a, dict))
 
     def test_map_roundtrip(self):
@@ -294,7 +294,7 @@ class TestAvro(BaseTest):
 
         mr = MapRecord(a={"a": "b", "c": "d"})
         str_rec = pyschema.contrib.avro.dumps(mr)
-        reborn = pyschema.contrib.avro.loads(str_rec, record_class=MapRecord)
+        reborn = pyschema.contrib.avro.loads(str_rec, schema=MapRecord)
 
         self.assertEquals(
             reborn.a,
@@ -324,7 +324,7 @@ class TestSubRecord(Record):
 
         r = TestRecord()
         s = pyschema.contrib.avro.dumps(r)
-        pyschema.contrib.avro.loads(s, record_class=TestRecord)
+        pyschema.contrib.avro.loads(s, schema=TestRecord)
 
 
 class TestExtraFields(TestCase):
@@ -336,4 +336,4 @@ class TestExtraFields(TestCase):
 
         line = '{"field": {"long": 8}, "invalid_field": {"long": 8}}'
 
-        self.assertRaises(ParseError, lambda: pyschema.contrib.avro.loads(line, record_class=ValidRecord))
+        self.assertRaises(ParseError, lambda: pyschema.contrib.avro.loads(line, schema=ValidRecord))

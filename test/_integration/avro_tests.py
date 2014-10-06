@@ -162,7 +162,7 @@ def avro_roundtrip(record_type, record, schema=None, json_record=None):
         logging.error(json_record)
         return False
     try:
-        pyschema.contrib.avro.loads(fixed_json, record_class=record.__class__)
+        pyschema.contrib.avro.loads(fixed_json, schema=record.__class__)
     except pyschema.ParseError:
         logging.error("Could not parse read-back record:")
         logging.error(fixed_json)

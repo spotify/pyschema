@@ -47,14 +47,14 @@ def typeless_mr_writer(job, outputs, output_stream, stderr=sys.stderr):
 
     Can be used as job.writer in luigi.hadoop.JobTask
     """
-    dumps = functools.partial(core.dumps, attach_record_name=False)
+    dumps = functools.partial(core.dumps, attach_schema_name=False)
     mr_writer(job, outputs, output_stream, stderr, dumps)
 
 
-def typed_mr_reader(record_class):
-    """ Function factory for an mr_reader that enforces the record class to `record_class`. Because of that, serialized input records don't have to contain $record_name entires.
+def typed_mr_reader(schema):
+    """ Function factory for an mr_reader that enforces the record class to `schema`. Because of that, serialized input records don't have to contain $record_name entires.
     """
     return functools.partial(
         mr_reader,
-        loads=functools.partial(core.loads, record_class=record_class)
+        loads=functools.partial(core.loads, schema=schema)
     )

@@ -200,7 +200,7 @@ class DateTime(Text):
             raise ValueError("Invalid value for DateField field: %r" % obj)
 
 
-# special value for SubRecord's record_class parameter
+# special value for SubRecord's schema parameter
 # that signifies a SubRecord accepting records of the
 # same type as the container/parent Record.
 SELF = object()
@@ -209,18 +209,18 @@ SELF = object()
 class SubRecord(Field):
     """"Field for storing other :class:`record.Record`s"""
 
-    def __init__(self, record_class, **kwargs):
+    def __init__(self, schema, **kwargs):
         super(SubRecord, self).__init__(**kwargs)
-        self._record_class = record_class
+        self._schema = schema
 
     def dump(self, obj):
-        if not isinstance(obj, self._record_class):
+        if not isinstance(obj, self._schema):
             raise ValueError("%r is not a %r"
-                             % (obj, self._record_class))
+                             % (obj, self._schema))
         return core.to_json_compatible(obj)
 
     def load(self, obj):
-        return core.from_json_compatible(self._record_class, obj)
+        return core.from_json_compatible(self._schema, obj)
 
     def set_parent(self, schema):
         """This method gets called by the metaclass
@@ -229,8 +229,8 @@ class SubRecord(Field):
         parent if needed. Its needed for SubRecords
         in case it refers to the container record.
         """
-        if self._record_class == SELF:
-            self._record_class = schema
+        if self._schema == SELF:
+            self._schema = schema
 
     def default_value(self):
         #  avoid default-sharing between records

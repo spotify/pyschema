@@ -12,10 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
+import simplejson as json
 
 from unittest import TestCase
 from jsonschema import validate, ValidationError
@@ -23,6 +20,7 @@ from jsonschema import validate, ValidationError
 from pyschema import Record, Text, Integer
 from pyschema import Enum, List, SubRecord, Map
 from pyschema.contrib import jsonschema
+
 
 class SimpleRecord(Record):
     alpha = Text()

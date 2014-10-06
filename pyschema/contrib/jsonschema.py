@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 '''
-Extension for generating JSON schema schemas from PySchema Record classes
+Extension for generating JSON schema schemas from PySchema classes
 
 JSON schema: http://json-schema.org/
 
@@ -35,12 +35,8 @@ ype": "string"}, "bar": {"type": "integer"}}}  '
 from pyschema import core
 from pyschema.types import Field, Boolean, Integer, Float
 from pyschema.types import Text, Enum, List, Map, SubRecord
-from ordereddict import OrderedDict
-
-try:
-    import json
-except ImportError:
-    import simplejson as json
+from collections import OrderedDict
+import simplejson as json
 
 
 # Bytes are not supported
@@ -52,12 +48,14 @@ Enum.jsonschema_type_name = 'string'
 List.jsonschema_type_name = 'array'
 Map.avro_type_name = 'object'
 
+
 @Field.mixin
 class FieldMixin:
     def jsonschema_type_schema(self, state):
         return {
             'type': self.jsonschema_type_name,
         }
+
 
 @Enum.mixin
 class EnumMixin:
@@ -67,6 +65,7 @@ class EnumMixin:
             'enum': sorted(list(self.values)),
         }
 
+
 @List.mixin
 class ListMixin:
     def jsonschema_type_schema(self, state):
@@ -74,6 +73,7 @@ class ListMixin:
             'type': self.jsonschema_type_name,
             'items': self.field_type.jsonschema_type_schema(state),
         }
+
 
 @Map.mixin
 class MapMixin:
@@ -86,18 +86,19 @@ class MapMixin:
             },
         }
 
+
 @SubRecord.mixin
 class SubRecordMixin:
     def jsonschema_type_schema(self, state):
-        cls = self._record_class
-        state.record_schemas[cls._record_name] = get_schema_dict(cls, state)
+        cls = self._schema
+        state.record_schemas[cls._schema_name] = get_schema_dict(cls, state)
         return {
             '$ref': self.jsonschema_type_name,
         }
 
     @property
     def jsonschema_type_name(self):
-        return '#/definitions/{0}'.format(self._record_class._record_name)
+        return '#/definitions/{0}'.format(self._schema._schema_name)
 
 
 # Schema generation
@@ -115,10 +116,10 @@ def get_schema_dict(record, state=None):
     state = state or SchemaGeneratorState()
     schema = OrderedDict([
         ('type', 'object'),
-        ('id', record._record_name),
+        ('id', record._schema_name),
     ])
     fields = dict()
-    for field_name, field_type in record._schema:
+    for field_name, field_type in record._fields.iteritems():
         fields[field_name] = field_type.jsonschema_type_schema(state)
 
     required = set(fields.keys())
@@ -126,7 +127,7 @@ def get_schema_dict(record, state=None):
     schema['required'] = sorted(list(required))
     schema['additionalProperties'] = False
 
-    state.record_schemas[record._record_name] = schema
+    state.record_schemas[record._schema_name] = schema
     return schema
 
 
@@ -138,7 +139,7 @@ def get_root_schema_dict(record):
     """
     state = SchemaGeneratorState()
     schema = get_schema_dict(record, state)
-    del state.record_schemas[record._record_name]
+    del state.record_schemas[record._schema_name]
     if state.record_schemas:
         schema['definitions'] = dict()
         for name, sub_schema in state.record_schemas.iteritems():
@@ -154,5 +155,5 @@ def dumps(record):
     return json.dumps(core.to_json_compatible(record))
 
 
-def loads(s, record_store=None, record_class=None):
-    return core.loads(s, record_store, record_class, core.from_json_compatible)
+def loads(s, record_store=None, schema=None):
+    return core.loads(s, record_store, schema, core.from_json_compatible)

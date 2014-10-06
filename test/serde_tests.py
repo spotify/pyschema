@@ -18,8 +18,8 @@ class TestBytes(TestCase):
     def _roundtrip(self, schema, input_bytes, expected=None):
         record = schema()
         record._ = input_bytes
-        serialized = pyschema.dumps(record, attach_record_name=False)
-        reborn = pyschema.loads(serialized, record_class=schema)
+        serialized = pyschema.dumps(record, attach_schema_name=False)
+        reborn = pyschema.loads(serialized, schema=schema)
         return serialized, reborn._
 
     def _all_bytes(self):
@@ -81,4 +81,4 @@ class TestExtraFields(TestCase):
 
         line = '{"field": 8, "invalid_field": 0}'
 
-        self.assertRaises(ParseError, lambda: pyschema.loads(line, record_class=ValidRecord))
+        self.assertRaises(ParseError, lambda: pyschema.loads(line, schema=ValidRecord))

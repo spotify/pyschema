@@ -93,7 +93,7 @@ class TestBasicUsage(TestCase):
 
     def test_record_name(self):
         self.assertEquals(
-            self.Foo._record_name,
+            self.Foo._schema_name,
             "Foo"
         )
 

@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-from core import PySchema, Record, dumps, loads, ispyschema, RecordStore
+from core import PySchema, Record, dumps, loads, ispyschema, SchemaStore
 from core import disable_auto_register, enable_auto_register, no_auto_store
 from core import NO_DEFAULT
 from types import *

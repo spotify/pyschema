@@ -24,8 +24,10 @@ class TestMRWriter(BaseTest):
         output = StringIO()
         writer(None, self.seq(), output)
         output.seek(0)
-        output_lines = output.read()[:-1].split('\n')  # remove last \n before splitting
-        output_records = tuple(pyschema.loads(l, record_class=hard_coded_type) for l in output_lines)
+        # remove last \n before splitting
+        output_lines = output.read()[:-1].split('\n')
+        output_records = tuple(
+            pyschema.loads(l, schema=hard_coded_type) for l in output_lines)
         foos = tuple(rec.foo for rec in output_records)
         bars = tuple(rec.bar for rec in output_records)
         self.assertEquals(
@@ -41,7 +43,7 @@ class TestMRWriter(BaseTest):
     def test_mr_writer(self):
         writer = pyschema.contrib.luigi.mr_writer
         output_lines, output_records = self._generic_writer_tests(writer)
-        record_names = tuple(rec._record_name for rec in output_records)
+        record_names = tuple(rec._schema_name for rec in output_records)
         self.assertEquals(
             record_names,
             ("FooRecord",) * 3
@@ -52,13 +54,16 @@ class TestMRWriter(BaseTest):
         obj = json.loads(output_lines[0])
         self.recursive_compare(
             obj,
-            {"foo": "Hej", "bar": 10, "$record_name": "FooRecord"}
+            {"foo": "Hej", "bar": 10, "$schema": "FooRecord"}
         )
 
     def test_typeless_mr_writer(self):
         writer = pyschema.contrib.luigi.typeless_mr_writer
-        self.assertRaises(pyschema.ParseError, lambda: self._generic_writer_tests(writer))
-        output_lines, output_records = self._generic_writer_tests(writer, FooRecord)
+        self.assertRaises(
+            pyschema.ParseError,
+            lambda: self._generic_writer_tests(writer))
+        output_lines, output_records = self._generic_writer_tests(
+            writer, FooRecord)
         obj = json.loads(output_lines[0])
         self.recursive_compare(
             obj,

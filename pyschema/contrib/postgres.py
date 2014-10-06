@@ -23,14 +23,15 @@ Boolean.pg_type = "BOOLEAN"
 Date.pg_type = "DATE"
 DateTime.pg_type = "TIMESTAMP WITHOUT TIME ZONE"
 
+
 def camel_case_to_underscore(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-def types(record_class):
+def types(schema):
     all_types = []
-    for name, field_type in record_class._schema:
+    for name, field_type in schema._fields.iteritems():
         all_types.append((name, field_type.pg_type))
     return all_types
 
@@ -43,9 +44,10 @@ def _create_statement(table_name, types):
     return "CREATE TABLE %s (" % (table_name,) + coldefs + ")"
 
 
-def create_statement(record_class, table_name=None):
-    table_name = table_name or camel_case_to_underscore(record_class._record_name)
+def create_statement(schema, table_name=None):
+    table_name = table_name or camel_case_to_underscore(
+        schema._schema_name)
     return _create_statement(
         table_name,
-        types(record_class)
+        types(schema)
     )

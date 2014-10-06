@@ -78,7 +78,7 @@ class SchemaStore(object):
     def __str__(self):
         return str(self._schema_map.keys())
 
-    def add_record(self, schema):
+    def add_record(self, schema, _bump_stack_level=False):
         """ Add record class to record store for retrieval at record load time.
 
             Can be used as a class decorator
@@ -86,10 +86,11 @@ class SchemaStore(object):
         existing = self._schema_map.get(schema.__name__, None)
         if existing:
             warnings.warn(
-                "{prev_module}.{class_name} replaces record from {new_module}"
+                "{new_module}.{class_name} replaces record from {prev_module}"
                 .format(class_name=schema.__name__,
                         prev_module=existing.__module__,
-                        new_module=schema.__module__))
+                        new_module=schema.__module__),
+                stacklevel=3 if _bump_stack_level else 2)
 
         self._schema_map[schema.__name__] = schema
         return schema
@@ -220,7 +221,7 @@ class PySchema(ABCMeta):
             field.set_parent(cls)
 
         if metacls.auto_register:
-            auto_store.add_record(cls)
+            auto_store.add_record(cls, _bump_stack_level=True)
         return cls
 
     @classmethod
@@ -231,7 +232,8 @@ class PySchema(ABCMeta):
                     schema=name,
                     field=fields,
                     plural="s" if len(fields) > 1 else ""
-                )
+                ),
+            stacklevel=4
         )
 
     @classmethod

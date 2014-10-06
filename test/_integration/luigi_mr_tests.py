@@ -3,7 +3,7 @@ from luigi.hadoop import JobTask
 from luigi.mock import MockFile
 
 from ..common import BaseTest
-from pyschema.contrib.luigi import mr_reader, mr_writer, typeless_mr_writer
+from pyschema_extensions.luigi import mr_reader, mr_writer, typeless_mr_writer
 import pyschema
 from pyschema.types import Text, Integer
 

@@ -26,7 +26,7 @@ Usage:
 >>>     foo = Text()
 >>>     bar = Integer()
 >>>
->>> [pyschema.contrib.jsonschema.]get_root_schema_string(MyRecord)
+>>> [pyschema_extensions.jsonschema.]get_root_schema_string(MyRecord)
 
 '{"additionalProperties": false, "required": ["bar", "foo"], "type": "object", "id": "MyRecord", "properties": {"foo": {"t
 ype": "string"}, "bar": {"type": "integer"}}}  '

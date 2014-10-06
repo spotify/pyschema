@@ -20,7 +20,7 @@ Usage:
 >>>     foo = Text()
 >>>     bar = Integer()
 >>>
->>> [pyschema.contrib.avro.]get_schema_string(MyRecord)
+>>> [pyschema_extensions.avro.]get_schema_string(MyRecord)
 
 '{"fields": [{"type": "string", "name": "foo"},
 {"type": "long", "name": "bar"}],

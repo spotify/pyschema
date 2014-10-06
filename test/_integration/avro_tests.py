@@ -7,7 +7,7 @@ from unittest import TestCase
 from pyschema import Record, Text, Integer, Boolean, Bytes
 from pyschema import Float, Enum, List, SubRecord, Map
 import pyschema
-import pyschema.contrib.avro
+import pyschema_extensions.avro
 import os.path
 
 
@@ -117,8 +117,8 @@ avro_tools_path = "{0}/../../avro-tools-1.7.5.jar".format(
 
 
 def avro_roundtrip(record_type, record, schema=None, json_record=None):
-    schema = schema or pyschema.contrib.avro.get_schema_string(record_type)
-    json_record = json_record or pyschema.contrib.avro.dumps(record)
+    schema = schema or pyschema_extensions.avro.get_schema_string(record_type)
+    json_record = json_record or pyschema_extensions.avro.dumps(record)
 
     read_cmd = ["java", "-jar", avro_tools_path, "fragtojson", schema, "-"]
     write_cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]
@@ -162,7 +162,7 @@ def avro_roundtrip(record_type, record, schema=None, json_record=None):
         logging.error(json_record)
         return False
     try:
-        pyschema.contrib.avro.loads(fixed_json, schema=record.__class__)
+        pyschema_extensions.avro.loads(fixed_json, schema=record.__class__)
     except pyschema.ParseError:
         logging.error("Could not parse read-back record:")
         logging.error(fixed_json)

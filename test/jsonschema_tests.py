@@ -19,7 +19,7 @@ from jsonschema import validate, ValidationError
 
 from pyschema import Record, Text, Integer
 from pyschema import Enum, List, SubRecord, Map
-from pyschema.contrib import jsonschema
+from pyschema_extensions import jsonschema
 
 
 class SimpleRecord(Record):

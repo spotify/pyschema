@@ -1,7 +1,7 @@
 from common import BaseTest
 import pyschema
 from pyschema.types import Text, Integer
-import pyschema.contrib.luigi
+import pyschema_extensions.luigi
 from cStringIO import StringIO
 import simplejson as json
 
@@ -41,7 +41,7 @@ class TestMRWriter(BaseTest):
         return output_lines, output_records
 
     def test_mr_writer(self):
-        writer = pyschema.contrib.luigi.mr_writer
+        writer = pyschema_extensions.luigi.mr_writer
         output_lines, output_records = self._generic_writer_tests(writer)
         record_names = tuple(rec._schema_name for rec in output_records)
         self.assertEquals(
@@ -58,7 +58,7 @@ class TestMRWriter(BaseTest):
         )
 
     def test_typeless_mr_writer(self):
-        writer = pyschema.contrib.luigi.typeless_mr_writer
+        writer = pyschema_extensions.luigi.typeless_mr_writer
         self.assertRaises(
             pyschema.ParseError,
             lambda: self._generic_writer_tests(writer))

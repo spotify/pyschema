@@ -12,19 +12,23 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-try:
-    from setuptools import setup
-except:
-    from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='pyschema',
-    version='1.0.0',
+    version='2.0.0',
     description='Schema definition and serialisation library',
     author='Elias Freider',
     author_email='freider@spotify.com',
+    url="http://github.com/spotify/pyschema",
     packages=[
         'pyschema',
-        'pyschema.contrib'
+        'pyschema_extensions'
+    ],
+    install_requires=[
+        'simplejson'
+    ],
+    namespace_packages=[
+        'pyschema_extensions'
     ]
 )

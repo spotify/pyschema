@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from pyschema import Record, no_auto_store
 from pyschema.types import Integer, Text, Float, Boolean, Date, DateTime
-from pyschema.contrib import postgres
+from pyschema_extensions import postgres
 
 
 @no_auto_store()

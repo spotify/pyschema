@@ -15,23 +15,27 @@ import datetime
 
 from unittest import TestCase
 from common import BaseTest
+import pyschema
 from pyschema import Record, no_auto_store
 from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 from pyschema.types import SubRecord, Map, Date, DateTime
-from pyschema.core import ParseError, NO_DEFAULT
-import pyschema.contrib.avro
+from pyschema.core import ParseError
+import pyschema_extensions.avro
 import simplejson as json
 
 
 class TextRecord(Record):
     t = Text()
 
+
 class TextRecord2(Record):
     t = Text()
+
 
 class TextRecord3(Record):
     _avro_namespace_ = "blah.blah"
     t = Text()
+
 
 class SomeAvroRecord(Record):
     a = Text()
@@ -159,7 +163,7 @@ class TestNullableDefaultRecord(BaseTest):
         )
 
     def test_avro_schema(self):
-        generated_schema_dct = pyschema.contrib.avro.get_schema_dict(NullableDefaultRecord)
+        generated_schema_dct = pyschema_extensions.avro.get_schema_dict(NullableDefaultRecord)
         self.recursive_compare(generated_schema_dct, nullable_default_record_schema)
 
     def test_original_default_not_affected(self):
@@ -173,7 +177,7 @@ class TestNullableDefaultRecord(BaseTest):
 
 class TestAvro(BaseTest):
     def test_avro_schema(self):
-        schema = pyschema.contrib.avro.get_schema_dict(SomeAvroRecord)
+        schema = pyschema_extensions.avro.get_schema_dict(SomeAvroRecord)
         fields = schema["fields"]
         names = tuple(x["name"] for x in fields)
         self.assertEquals(
@@ -185,7 +189,7 @@ class TestAvro(BaseTest):
         self.assertEquals(schema["name"], "SomeAvroRecord")
 
     def test_serialization(self):
-        schema_string = pyschema.contrib.avro.get_schema_string(SomeAvroRecord)
+        schema_string = pyschema_extensions.avro.get_schema_string(SomeAvroRecord)
         schema_dict = json.loads(schema_string)
         try:
             self.recursive_compare(schema_dict, hand_crafted_schema_dict)
@@ -220,8 +224,8 @@ class TestAvro(BaseTest):
             t=TextRecord2(t="look"),
             u=TextRecord3(t="dog"),
         )
-        avro_string = pyschema.contrib.avro.dumps(s)
-        new_s = pyschema.contrib.avro.loads(
+        avro_string = pyschema_extensions.avro.dumps(s)
+        new_s = pyschema_extensions.avro.loads(
             avro_string,
             schema=SomeAvroRecord
         )
@@ -259,8 +263,8 @@ class TestAvro(BaseTest):
             a = List(Text())
 
         lr = ListRecord()
-        str_rec = pyschema.contrib.avro.dumps(lr)
-        reborn = pyschema.contrib.avro.loads(str_rec, schema=ListRecord)
+        str_rec = pyschema_extensions.avro.dumps(lr)
+        reborn = pyschema_extensions.avro.loads(str_rec, schema=ListRecord)
         self.assertTrue(isinstance(reborn.a, list))
 
     def test_list_roundtrip(self):
@@ -269,8 +273,8 @@ class TestAvro(BaseTest):
             a = List(Text())
 
         lr = ListRecord(a=["c", "a", "b"])
-        str_rec = pyschema.contrib.avro.dumps(lr)
-        reborn = pyschema.contrib.avro.loads(str_rec, schema=ListRecord)
+        str_rec = pyschema_extensions.avro.dumps(lr)
+        reborn = pyschema_extensions.avro.loads(str_rec, schema=ListRecord)
 
         self.assertEquals(
             tuple(reborn.a),
@@ -283,8 +287,8 @@ class TestAvro(BaseTest):
             a = Map(Text())
 
         mr = MapRecord()
-        str_rec = pyschema.contrib.avro.dumps(mr)
-        reborn = pyschema.contrib.avro.loads(str_rec, schema=MapRecord)
+        str_rec = pyschema_extensions.avro.dumps(mr)
+        reborn = pyschema_extensions.avro.loads(str_rec, schema=MapRecord)
         self.assertTrue(isinstance(reborn.a, dict))
 
     def test_map_roundtrip(self):
@@ -293,8 +297,8 @@ class TestAvro(BaseTest):
             a = Map(Text())
 
         mr = MapRecord(a={"a": "b", "c": "d"})
-        str_rec = pyschema.contrib.avro.dumps(mr)
-        reborn = pyschema.contrib.avro.loads(str_rec, schema=MapRecord)
+        str_rec = pyschema_extensions.avro.dumps(mr)
+        reborn = pyschema_extensions.avro.loads(str_rec, schema=MapRecord)
 
         self.assertEquals(
             reborn.a,
@@ -312,7 +316,6 @@ class TestAvro(BaseTest):
         self.assertEquals(long_float.avro_type_name, 'double')
 
 
-
 class TestSubRecord(Record):
     def test_subrecord_null(self):
         @no_auto_store()
@@ -323,8 +326,8 @@ class TestSubRecord(Record):
             i = SubRecord(Inner)
 
         r = TestRecord()
-        s = pyschema.contrib.avro.dumps(r)
-        pyschema.contrib.avro.loads(s, schema=TestRecord)
+        s = pyschema_extensions.avro.dumps(r)
+        pyschema_extensions.avro.loads(s, schema=TestRecord)
 
 
 class TestExtraFields(TestCase):
@@ -336,4 +339,4 @@ class TestExtraFields(TestCase):
 
         line = '{"field": {"long": 8}, "invalid_field": {"long": 8}}'
 
-        self.assertRaises(ParseError, lambda: pyschema.contrib.avro.loads(line, schema=ValidRecord))
+        self.assertRaises(ParseError, lambda: pyschema_extensions.avro.loads(line, schema=ValidRecord))

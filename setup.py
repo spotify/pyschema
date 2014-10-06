@@ -30,5 +30,6 @@ setup(
     ],
     namespace_packages=[
         'pyschema_extensions'
-    ]
+    ],
+    test_suite='nose.collector'
 )

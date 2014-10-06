@@ -52,7 +52,12 @@ _schema_name:
 from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod
 from itertools import izip
-from collections import OrderedDict
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
 import warnings
 import types
 import simplejson as json

@@ -35,7 +35,10 @@ ype": "string"}, "bar": {"type": "integer"}}}  '
 from pyschema import core
 from pyschema.types import Field, Boolean, Integer, Float
 from pyschema.types import Text, Enum, List, Map, SubRecord
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 import simplejson as json
 
 

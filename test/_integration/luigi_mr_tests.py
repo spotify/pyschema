@@ -3,7 +3,7 @@ from luigi.hadoop import JobTask
 from luigi.mock import MockFile
 
 from ..common import BaseTest
-from pyschema_extensions.luigi import mr_reader, mr_writer, typeless_mr_writer
+from pyschema_extensions.luigi import mr_reader, mr_writer
 import pyschema
 from pyschema.types import Text, Integer
 
@@ -60,10 +60,6 @@ class VanillaTask(JobTask):
         return MakeInputData()
 
 
-class TypelessTask(VanillaTask):
-    writer = typeless_mr_writer
-
-
 class LuigiOfflineMRTests(BaseTest):
     def setUp(self):
         pass
@@ -75,17 +71,8 @@ class LuigiOfflineMRTests(BaseTest):
         task = VanillaTask()
         luigi.build([task], local_scheduler=True)
         for line in task.output().open('r'):
-            self.assertTrue("$record_name" in line)
+            self.assertTrue("$schema" in line)
             rec = pyschema.loads(line)
             self.assertEquals(rec.foo, u"yay")
             self.assertEquals(rec.barsum, 5)
 
-    def test_typeless_mr(self):
-        task = TypelessTask()
-        luigi.build([task], local_scheduler=True)
-        for line in task.output().open('r'):
-            self.assertTrue("$record_name" not in line)
-            self.assertRaises(pyschema.ParseError, lambda: pyschema.loads(line))
-            rec = pyschema.loads(line, schema=OutputRecord)
-            self.assertEquals(rec.foo, u"yay")
-            self.assertEquals(rec.barsum, 5)

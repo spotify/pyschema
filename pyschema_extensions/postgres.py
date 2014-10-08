@@ -11,6 +11,12 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
+
+"""Postgres style SQL generation based on pyschemas
+
+Quite incomplete and still a work in progress
+"""
+
 import re
 
 from pyschema.types import Integer, Text, Float, Boolean, Date, DateTime

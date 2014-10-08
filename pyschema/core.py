@@ -17,32 +17,30 @@
 
 Usage example:
 
-class Foo(Record):
-    bin = Bytes()
-
-
-class MyRecord(Record):
-    a_string = Text()
-    a_float = Float()
-    record = List(SubRecord(Foo))
-
-
-rec = MyRecord(a_string="hej")
-rec.record = [Foo(bin="bar")]
-
-s = dumps(rec)
-print loads(s)
+>>> class Foo(Record):
+... bin = Bytes()
+...
+... class MyRecord(Record):
+...     a_string = Text()
+...     a_float = Float()
+...     record = List(SubRecord(Foo))
+...
+... rec = MyRecord(a_string="hej")
+... rec.record = [Foo(bin="bar")]
+...
+... s = dumps(rec)
+... print loads(s)
 
 
 Internals:
 
-A valid PySchema class is required to contain the following class variables:
+A valid PySchema class contains the following class variables:
 
-_fields:
+`_fields`
     An OrderedDict of `field_name` => `field_type`
-    Where `field_type` is an instance of a Field subclass
+    where `field_type` is an instance of a Field subclass
 
-_schema_name:
+`_schema_name`
     The qualifying name for this schema. This is used for registering a record
     in a `SchemaStore` and for auto-identification of serialized records.
     Should be unique within a specific SchemaStore, so if auto registering is
@@ -167,21 +165,21 @@ class Field(object):
 
         Example:
 
-        @Integer.mixin
-        class IntegerPostgresExtensions:
-            postgres_type = 'INT'
-
-            def postgres_dump(self, obj):
-                self.dump(obj) + "::integer"
+        >>> @Integer.mixin
+        ... class IntegerPostgresExtensions:
+        ...     postgres_type = 'INT'
+        ...
+        ...     def postgres_dump(self, obj):
+        ...         self.dump(obj) + "::integer"
 
         Is roughly equivalent to:
 
-        Integer.postgres_type = 'INT'
-
-        def postgres_dump(self, obj):
-            self.dump(obj) + "::integer"
-
-        Integer.postgres_dump = postgres_dump
+        >>> Integer.postgres_type = 'INT'
+        ...
+        ... def postgres_dump(self, obj):
+        ...     self.dump(obj) + "::integer"
+        ...
+        ... Integer.postgres_dump = postgres_dump
 
         """
         for item_name in dir(mixin_cls):
@@ -431,14 +429,14 @@ def load_json_dct(
     as if just loaded from a json serialized record string.
 
     :param dct:
-    Python dictionary with key/value pairs for the record
+        Python dictionary with key/value pairs for the record
 
     :param record_store:
-    Record store to use for schema lookups (when $record_name field is present)
+        Record store to use for schema lookups (when $schema field is present)
 
     :param schema:
-    PySchema Record class for the record to load.
-    This will override any $record_name fields specified in `dct`
+        PySchema Record class for the record to load.
+        This will override any $schema fields specified in `dct`
 
     """
     if schema is None:
@@ -476,14 +474,14 @@ def loads(
     """ Create a Record instance from a json serialized dictionary
 
     :param s:
-    String with a json-serialized dictionary
+        String with a json-serialized dictionary
 
     :param record_store:
-    Record store to use for schema lookups (when $record_name field is present)
+        Record store to use for schema lookups (when $schema field is present)
 
     :param schema:
-    PySchema Record class for the record to load.
-    This will override any $record_name fields specified in `s`
+        PySchema Record class for the record to load.
+        This will override any $schema fields specified in `s`
 
     """
     if not isinstance(s, unicode):

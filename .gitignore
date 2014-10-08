@@ -2,7 +2,7 @@
 *.pyo
 *.nicesetup
 docs/_build
-docs/_api
+docs/_api*
 docs/README.rst
 build
 dist

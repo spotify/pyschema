@@ -56,16 +56,3 @@ class TestMRWriter(BaseTest):
             obj,
             {"foo": "Hej", "bar": 10, "$schema": "FooRecord"}
         )
-
-    def test_typeless_mr_writer(self):
-        writer = pyschema_extensions.luigi.typeless_mr_writer
-        self.assertRaises(
-            pyschema.ParseError,
-            lambda: self._generic_writer_tests(writer))
-        output_lines, output_records = self._generic_writer_tests(
-            writer, FooRecord)
-        obj = json.loads(output_lines[0])
-        self.recursive_compare(
-            obj,
-            {"foo": "Hej", "bar": 10}
-        )

@@ -12,13 +12,15 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+"""Basic utilities for using PySchema in Luigi's Python MR lib
+"""
 import sys
-import functools
 from pyschema import core
 
 
 def mr_reader(job, input_stream, loads=core.loads):
-    """ Converts a file object with json serialised pyschema records to a stream of pyschema objects
+    """ Converts a file object with json serialised pyschema records
+        to a stream of pyschema objects
 
     Can be used as job.reader in luigi.hadoop.JobTask
     """
@@ -26,7 +28,8 @@ def mr_reader(job, input_stream, loads=core.loads):
         yield loads(line),
 
 
-def mr_writer(job, outputs, output_stream, stderr=sys.stderr, dumps=core.dumps):
+def mr_writer(job, outputs, output_stream,
+              stderr=sys.stderr, dumps=core.dumps):
     """ Writes a stream of json serialised pyschema Records to a file object
 
     Can be used as job.writer in luigi.hadoop.JobTask
@@ -37,24 +40,3 @@ def mr_writer(job, outputs, output_stream, stderr=sys.stderr, dumps=core.dumps):
         except core.ParseError, e:
             print >> stderr, e
             raise
-
-
-# WARNING: The functions below are deprecated and will most likely be removed in the near future
-# Use partials of the functions above instead
-
-def typeless_mr_writer(job, outputs, output_stream, stderr=sys.stderr):
-    """ Like `mr_writer` but doesn't include the schema identifying $record_name field
-
-    Can be used as job.writer in luigi.hadoop.JobTask
-    """
-    dumps = functools.partial(core.dumps, attach_schema_name=False)
-    mr_writer(job, outputs, output_stream, stderr, dumps)
-
-
-def typed_mr_reader(schema):
-    """ Function factory for an mr_reader that enforces the record class to `schema`. Because of that, serialized input records don't have to contain $record_name entires.
-    """
-    return functools.partial(
-        mr_reader,
-        loads=functools.partial(core.loads, schema=schema)
-    )

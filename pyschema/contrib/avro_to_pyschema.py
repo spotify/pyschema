@@ -62,11 +62,13 @@ def get_field_definition(field, sub_records):
         field_type = get_field_type_name(field['type'])
         if not is_nullable(field['type']):
             args.append('nullable=False')
+    if 'doc' in field:
+        args.append('description=%s' % repr(str(field['doc'])))
+
     # simple types
     if field_type in field_map.keys():
         args.extend(extra_args_map.get(field_type, []))
         return "%s(%s)" % (field_map[field_type], ', '.join(args))
-
     # complex types
     elif field_type == 'record':
         args.insert(0, get_name(field))

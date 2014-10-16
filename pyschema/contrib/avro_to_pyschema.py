@@ -16,10 +16,13 @@ complex_field_map = {
              'record': 'pyschema.SubRecord',
              }
 
-def get_first_type(field_type):
+def get_ununionized_field_type(field_type):
     if isinstance(field_type, list):
-        field_type = field_type[0]
+        if len(field_type) != 2 or field_type[0] != 'null':
+            raise Exception("PySchema doesn't support such advanced union types yet: %r" % field_type)
+        return field_type[1]
     return field_type
+
 def get_name(field):
     if isinstance(field['type'], basestring):
         return field['name']
@@ -34,7 +37,7 @@ def is_nullable(field_type):
     return False
 
 def get_field_type_name(field_type):
-    field_type = get_first_type(field_type)
+    field_type = get_ununionized_field_type(field_type)
     if isinstance(field_type, dict):
         field_type = field_type['type']
     return field_type
@@ -44,28 +47,24 @@ def nullable_str(field_type):
         return 'nullable=False'
     return ''
 
-def get_sub_fields_name(sub_type):
-    sub_map = {'record':'fields', 'array':'items', 'map': 'values'}
-    return sub_map[sub_type]
-
-def get_sub_field(field):
-    field_type = get_field_type_name(field['type'])
-    if field_type == 'record':
-        return field['fields']
-    sub_field = field['type'][get_sub_fields_name(field_type)]
-    if isinstance(sub_field, list):
-        return sub_field[0]
-    return sub_field
+def get_sub_field_type(field):
+    field_type = get_ununionized_field_type(field['type'])
+    type_name = get_field_type_name(field['type'])
+    if type_name == 'record':
+        return field_type['fields']
+    elif type_name == 'array':
+        return field_type['items']
+    elif type_name == 'map':
+        return field_type['values']
 
 def get_field_definition(field, sub_records):
-    if isinstance(field, basestring):
-        if field in field_map.keys():
-            return field_map[field] + '()'
-        return field
     nullable = 'nullable=False'
-    if is_nullable(field['type']):
-        nullable = ''
-    field_type = get_field_type_name(field['type'])
+    if isinstance(field, basestring):
+        field_type = field
+    else:
+        if is_nullable(field['type']):
+            nullable = ''
+        field_type = get_field_type_name(field['type'])
     # simple types
     if field_type in field_map.keys():
         args = [arg for arg in [nullable, extra_args_map.get(field_type,'')] if arg]
@@ -78,7 +77,7 @@ def get_field_definition(field, sub_records):
         sub_records.append(sub_rec)
         return "%s(%s, %s)" % (complex_field_map[field_type], name, nullable)
     elif field_type in complex_field_map.keys():
-        sub_field = get_sub_field(field)
+        sub_field = get_sub_field_type(field)
         sub_definition = get_field_definition(sub_field, sub_records)
         return "%s(%s, %s)" % (complex_field_map[field_type], sub_definition, nullable)
 

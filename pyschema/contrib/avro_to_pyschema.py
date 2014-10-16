@@ -7,8 +7,8 @@ field_map = {
              'long': 'pyschema.Integer',
             }
 extra_args_map = {
-                  'float': 'size=4',
-                  'int': 'size=4',
+                  'float': ['size=4'],
+                  'int': ['size=4'],
                   }
 complex_field_map = {
              'array': 'pyschema.List',
@@ -42,11 +42,6 @@ def get_field_type_name(field_type):
         field_type = field_type['type']
     return field_type
 
-def nullable_str(field_type):
-    if not is_nullable(field_type):
-        return 'nullable=False'
-    return ''
-
 def get_sub_field_type(field):
     field_type = get_ununionized_field_type(field['type'])
     type_name = get_field_type_name(field['type'])
@@ -58,28 +53,29 @@ def get_sub_field_type(field):
         return field_type['values']
 
 def get_field_definition(field, sub_records):
-    nullable = 'nullable=False'
+    args = []
     if isinstance(field, basestring):
         field_type = field
+        args.append('nullable=False')
     else:
-        if is_nullable(field['type']):
-            nullable = ''
         field_type = get_field_type_name(field['type'])
+        if not is_nullable(field['type']):
+            args.append('nullable=False')
     # simple types
     if field_type in field_map.keys():
-        args = [arg for arg in [nullable, extra_args_map.get(field_type,'')] if arg]
+        args.extend(extra_args_map.get(field_type, []))
         return "%s(%s)" % (field_map[field_type], ', '.join(args))
 
     # complex types
     elif field_type == 'record':
-        name = get_name(field)
+        args.insert(0, get_name(field))
         sub_rec = get_pyschema_record(field, sub_records)
         sub_records.append(sub_rec)
-        return "%s(%s, %s)" % (complex_field_map[field_type], name, nullable)
+        return "%s(%s)" % (complex_field_map[field_type], ', '.join(args))
     elif field_type in complex_field_map.keys():
         sub_field = get_sub_field_type(field)
-        sub_definition = get_field_definition(sub_field, sub_records)
-        return "%s(%s, %s)" % (complex_field_map[field_type], sub_definition, nullable)
+        args.insert(0, get_field_definition(sub_field, sub_records))
+        return "%s(%s)" % (complex_field_map[field_type], ', '.join(args))
 
 def get_pyschema_record(schema, sub_records):
     name = get_name(schema)

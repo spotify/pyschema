@@ -5,6 +5,7 @@ field_map = {
              'int': 'pyschema.Integer',
              'boolean': 'pyschema.Boolean',
              'long': 'pyschema.Integer',
+             'bytes': 'pyschema.Bytes',
             }
 extra_args_map = {
                   'float': ['size=4'],

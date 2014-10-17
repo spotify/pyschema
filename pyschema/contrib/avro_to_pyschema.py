@@ -1,3 +1,5 @@
+import json
+
 field_map = {
              'string': 'pyschema.Text',
              'float': 'pyschema.Float',
@@ -20,7 +22,7 @@ complex_field_map = {
 def get_ununionized_field_type(field_type):
     if isinstance(field_type, list):
         if len(field_type) != 2 or field_type[0] != 'null':
-            raise Exception("PySchema doesn't support such advanced union types yet: %r" % field_type)
+            raise NotImplementedError("PySchema doesn't support such advanced union types yet: %r" % field_type)
         return field_type[1]
     return field_type
 
@@ -63,7 +65,7 @@ def get_field_definition(field, sub_records):
         if not is_nullable(field['type']):
             args.append('nullable=False')
     if 'doc' in field:
-        args.append('description=%s' % repr(str(field['doc'])))
+        args.append('description=%s' % repr(field['doc'].encode('UTF-8')))
 
     # simple types
     if field_type in field_map.keys():
@@ -81,6 +83,8 @@ def get_field_definition(field, sub_records):
         return "%s(%s)" % (complex_field_map[field_type], ', '.join(args))
 
 def get_pyschema_record(schema, sub_records):
+    if isinstance(schema, basestring):
+        schema = json.loads(schema)
     name = get_name(schema)
 
     record_def = "class %s(pyschema.Record):\n" % name

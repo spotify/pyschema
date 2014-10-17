@@ -16,7 +16,8 @@
 
 Compatibility intended to be production-grade except:
 * defaults;
-* namespaces;
+* namespaces (not scrutinized);
+* aliases;
 * advanced Avro union types (other than the pattern to union with null, that
   translates to nullable i.e. optional).
 
@@ -121,6 +122,8 @@ def get_pyschema_record(schema, sub_records):
     ]
     if 'doc' in schema:
         record_def += [repr(str(schema['doc']))]
+    if 'namespace' in schema:
+        record_def += ["_avro_namespace_ = %r" % str(schema['namespace'])]
     if is_nullable(schema['type']):
         fields = schema['type'][0]['fields']
     else:

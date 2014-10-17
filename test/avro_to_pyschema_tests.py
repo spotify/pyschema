@@ -155,6 +155,7 @@ expected = """class Supported(pyschema.Record):
     # YOU KNOW YOU WOULDN'T WANT IT ANY OTHER WAY
     # SO TAKE ME AS I AM
     'We have doc'
+    _avro_namespace_ = 'com.spotify.pyschema.test'
     int_field = pyschema.Integer(nullable=False, size=4)
     float1 = pyschema.Float(nullable=False)
     required_string_field = pyschema.Text(nullable=False)

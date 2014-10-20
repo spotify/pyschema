@@ -129,12 +129,12 @@ class Integer(Field):
         self.size = size
 
     def dump(self, obj):
-        if not isinstance(obj, (int, type(None))):
+        if not isinstance(obj, (int, long, type(None))) or isinstance(obj, bool):
             raise ValueError("%r is not a valid Integer" % (obj,))
         return obj
 
     def load(self, obj):
-        if not isinstance(obj, (int, type(None))):
+        if not isinstance(obj, (int, long, type(None))) or isinstance(obj, bool):
             raise ParseError("%r is not a valid Integer" % (obj,))
         return obj
 

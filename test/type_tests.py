@@ -44,8 +44,8 @@ class TypeTests(TestCase):
         @pyschema.no_auto_store()
         class IntegerRecord(pyschema.Record):
             field = Integer()
-        allowed = [100, 2**32-1, -(2**32)]
-        forbidden = ["1", 0.12]
+        allowed = [100, 2**32-1, -(2**32), 1L]
+        forbidden = ["1", 0.12, False, True]
         self.assertCompliant(IntegerRecord, allowed, forbidden)
 
     def test_boolean(self):

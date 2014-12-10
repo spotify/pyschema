@@ -21,7 +21,10 @@ from pyschema.types import Boolean, Integer, Float, Bytes, Text, Enum, List
 from pyschema.types import SubRecord, Map, Date, DateTime
 from pyschema.core import ParseError
 import pyschema_extensions.avro
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 class TextRecord(Record):

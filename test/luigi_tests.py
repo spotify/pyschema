@@ -3,7 +3,10 @@ import pyschema
 from pyschema.types import Text, Integer
 import pyschema_extensions.luigi
 from cStringIO import StringIO
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 class FooRecord(pyschema.Record):

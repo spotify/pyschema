@@ -30,7 +30,10 @@ Usage:
 from pyschema import core
 from pyschema.types import Field, Boolean, Integer, Float
 from pyschema.types import Bytes, Text, Enum, List, Map, SubRecord
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 Boolean.avro_type_name = "boolean"

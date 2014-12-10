@@ -12,7 +12,10 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 from unittest import TestCase
 from jsonschema import validate, ValidationError

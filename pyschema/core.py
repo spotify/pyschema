@@ -58,7 +58,10 @@ except ImportError:
 
 import warnings
 import types
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 SCHEMA_FIELD_NAME = "$schema"

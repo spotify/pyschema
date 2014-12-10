@@ -39,7 +39,10 @@ try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
-import simplejson as json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 
 # Bytes are not supported

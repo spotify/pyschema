@@ -1,0 +1,7 @@
+pyschema_extensions
+===================
+
+.. toctree::
+   :maxdepth: 4
+
+   pyschema_extensions

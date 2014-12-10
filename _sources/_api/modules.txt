@@ -1,0 +1,7 @@
+pyschema
+========
+
+.. toctree::
+   :maxdepth: 4
+
+   pyschema

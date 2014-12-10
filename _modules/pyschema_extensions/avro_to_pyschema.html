@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyschema_extensions.avro_to_pyschema &mdash; PySchema 1.0a1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0a1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="PySchema 1.0a1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pyschema_extensions.avro_to_pyschema</h1><div class="highlight"><pre>
+<span class="c"># Copyright (c) 2014 Spotify AB</span>
+<span class="c">#</span>
+<span class="c"># Licensed under the Apache License, Version 2.0 (the &#39;License&#39;); you may not</span>
+<span class="c"># use this file except in compliance with the License. You may obtain a copy of</span>
+<span class="c"># the License at</span>
+<span class="c">#</span>
+<span class="c"># http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c">#</span>
+<span class="c"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c"># distributed under the License is distributed on an &#39;AS IS&#39; BASIS, WITHOUT</span>
+<span class="c"># WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the</span>
+<span class="c"># License for the specific language governing permissions and limitations under</span>
+<span class="c"># the License.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Helper functions for converting an Avro schema definition (json) to</span>
+<span class="sd">a PySchema python source definition.</span>
+
+<span class="sd">TODO: Another idea is to read avro schema and create Python classes</span>
+<span class="sd">dynamically without generating python source code.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">field_map</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;string&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Text&#39;</span><span class="p">,</span>
+    <span class="s">&#39;float&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Float&#39;</span><span class="p">,</span>
+    <span class="s">&#39;double&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Float&#39;</span><span class="p">,</span>
+    <span class="s">&#39;int&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Integer&#39;</span><span class="p">,</span>
+    <span class="s">&#39;boolean&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Boolean&#39;</span><span class="p">,</span>
+    <span class="s">&#39;long&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Integer&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">extra_args_map</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;float&#39;</span><span class="p">:</span> <span class="s">&#39;size=4&#39;</span><span class="p">,</span>
+    <span class="s">&#39;int&#39;</span><span class="p">:</span> <span class="s">&#39;size=4&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">complex_field_map</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&#39;array&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.List&#39;</span><span class="p">,</span>
+    <span class="s">&#39;map&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.Map&#39;</span><span class="p">,</span>
+    <span class="s">&#39;record&#39;</span><span class="p">:</span> <span class="s">&#39;pyschema.SubRecord&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_first_type"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_first_type">[docs]</a><span class="k">def</span> <span class="nf">get_first_type</span><span class="p">(</span><span class="n">field_type</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field_type</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">field_type</span> <span class="o">=</span> <span class="n">field_type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">field_type</span>
+
+</div>
+<div class="viewcode-block" id="get_name"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_name">[docs]</a><span class="k">def</span> <span class="nf">get_name</span><span class="p">(</span><span class="n">field</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">],</span> <span class="nb">basestring</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">field</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">][</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="is_nullable"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.is_nullable">[docs]</a><span class="k">def</span> <span class="nf">is_nullable</span><span class="p">(</span><span class="n">field_type</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field_type</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">True</span>
+    <span class="k">return</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="get_field_type_name"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_field_type_name">[docs]</a><span class="k">def</span> <span class="nf">get_field_type_name</span><span class="p">(</span><span class="n">field_type</span><span class="p">):</span>
+    <span class="n">field_type</span> <span class="o">=</span> <span class="n">get_first_type</span><span class="p">(</span><span class="n">field_type</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field_type</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">field_type</span> <span class="o">=</span> <span class="n">field_type</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">field_type</span>
+
+</div>
+<div class="viewcode-block" id="nullable_str"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.nullable_str">[docs]</a><span class="k">def</span> <span class="nf">nullable_str</span><span class="p">(</span><span class="n">field_type</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_nullable</span><span class="p">(</span><span class="n">field_type</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;nullable=False&#39;</span>
+    <span class="k">return</span> <span class="s">&#39;&#39;</span>
+
+</div>
+<div class="viewcode-block" id="get_sub_fields_name"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_sub_fields_name">[docs]</a><span class="k">def</span> <span class="nf">get_sub_fields_name</span><span class="p">(</span><span class="n">sub_type</span><span class="p">):</span>
+    <span class="n">sub_map</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;record&#39;</span><span class="p">:</span> <span class="s">&#39;fields&#39;</span><span class="p">,</span> <span class="s">&#39;array&#39;</span><span class="p">:</span> <span class="s">&#39;items&#39;</span><span class="p">,</span> <span class="s">&#39;map&#39;</span><span class="p">:</span> <span class="s">&#39;values&#39;</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">sub_map</span><span class="p">[</span><span class="n">sub_type</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="get_sub_field"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_sub_field">[docs]</a><span class="k">def</span> <span class="nf">get_sub_field</span><span class="p">(</span><span class="n">field</span><span class="p">):</span>
+    <span class="n">field_type</span> <span class="o">=</span> <span class="n">get_field_type_name</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">field_type</span> <span class="o">==</span> <span class="s">&#39;record&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">field</span><span class="p">[</span><span class="s">&#39;fields&#39;</span><span class="p">]</span>
+    <span class="n">sub_field</span> <span class="o">=</span> <span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">][</span><span class="n">get_sub_fields_name</span><span class="p">(</span><span class="n">field_type</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sub_field</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sub_field</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">sub_field</span>
+
+</div>
+<div class="viewcode-block" id="get_field_definition"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_field_definition">[docs]</a><span class="k">def</span> <span class="nf">get_field_definition</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">sub_records</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">field_map</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">field_map</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;()&#39;</span>
+        <span class="k">return</span> <span class="n">field</span>
+    <span class="n">nullable</span> <span class="o">=</span> <span class="s">&#39;nullable=False&#39;</span>
+    <span class="k">if</span> <span class="n">is_nullable</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]):</span>
+        <span class="n">nullable</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="n">field_type</span> <span class="o">=</span> <span class="n">get_field_type_name</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">])</span>
+    <span class="c"># simple types</span>
+    <span class="k">if</span> <span class="n">field_type</span> <span class="ow">in</span> <span class="n">field_map</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">arg</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="p">[</span><span class="n">nullable</span><span class="p">,</span> <span class="n">extra_args_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field_type</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">arg</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">field_map</span><span class="p">[</span><span class="n">field_type</span><span class="p">],</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+    <span class="c"># complex types</span>
+    <span class="k">elif</span> <span class="n">field_type</span> <span class="o">==</span> <span class="s">&#39;record&#39;</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">get_name</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="n">sub_rec</span> <span class="o">=</span> <span class="n">get_pyschema_record</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">sub_records</span><span class="p">)</span>
+        <span class="n">sub_records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sub_rec</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">complex_field_map</span><span class="p">[</span><span class="n">field_type</span><span class="p">],</span> <span class="n">name</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">field_type</span> <span class="ow">in</span> <span class="n">complex_field_map</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">sub_field</span> <span class="o">=</span> <span class="n">get_sub_field</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+        <span class="n">sub_definition</span> <span class="o">=</span> <span class="n">get_field_definition</span><span class="p">(</span><span class="n">sub_field</span><span class="p">,</span> <span class="n">sub_records</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">, </span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="n">complex_field_map</span><span class="p">[</span><span class="n">field_type</span><span class="p">],</span> <span class="n">sub_definition</span><span class="p">,</span> <span class="n">nullable</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_pyschema_record"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.avro_to_pyschema.get_pyschema_record">[docs]</a><span class="k">def</span> <span class="nf">get_pyschema_record</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">sub_records</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">get_name</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+
+    <span class="n">record_def</span> <span class="o">=</span> <span class="s">&quot;class </span><span class="si">%s</span><span class="s">(pyschema.Record):</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">name</span>
+    <span class="k">if</span> <span class="n">is_nullable</span><span class="p">(</span><span class="n">schema</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">]):</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">schema</span><span class="p">[</span><span class="s">&#39;type&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;fields&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">schema</span><span class="p">[</span><span class="s">&#39;fields&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">field</span><span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">]</span>
+        <span class="n">record_def</span> <span class="o">+=</span> <span class="s">&quot;    </span><span class="si">%s</span><span class="s"> = </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">get_field_definition</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">sub_records</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">record_def</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Elias Freider.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

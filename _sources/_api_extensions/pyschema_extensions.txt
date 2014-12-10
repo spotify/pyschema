@@ -1,0 +1,54 @@
+pyschema_extensions package
+===========================
+
+Submodules
+----------
+
+pyschema_extensions.avro module
+-------------------------------
+
+.. automodule:: pyschema_extensions.avro
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pyschema_extensions.avro_to_pyschema module
+-------------------------------------------
+
+.. automodule:: pyschema_extensions.avro_to_pyschema
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pyschema_extensions.jsonschema module
+-------------------------------------
+
+.. automodule:: pyschema_extensions.jsonschema
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pyschema_extensions.luigi module
+--------------------------------
+
+.. automodule:: pyschema_extensions.luigi
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pyschema_extensions.postgres module
+-----------------------------------
+
+.. automodule:: pyschema_extensions.postgres
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: pyschema_extensions
+    :members:
+    :undoc-members:
+    :show-inheritance:

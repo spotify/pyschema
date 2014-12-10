@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyschema_extensions.luigi &mdash; PySchema 1.0a1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0a1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="PySchema 1.0a1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pyschema_extensions.luigi</h1><div class="highlight"><pre>
+<span class="c"># Copyright (c) 2013 Spotify AB</span>
+<span class="c">#</span>
+<span class="c"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;); you may not</span>
+<span class="c"># use this file except in compliance with the License. You may obtain a copy of</span>
+<span class="c"># the License at</span>
+<span class="c">#</span>
+<span class="c"># http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c">#</span>
+<span class="c"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS, WITHOUT</span>
+<span class="c"># WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the</span>
+<span class="c"># License for the specific language governing permissions and limitations under</span>
+<span class="c"># the License.</span>
+
+<span class="sd">&quot;&quot;&quot;Basic utilities for using PySchema in Luigi&#39;s Python MR lib</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">pyschema</span> <span class="kn">import</span> <span class="n">core</span>
+
+
+<div class="viewcode-block" id="mr_reader"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.luigi.mr_reader">[docs]</a><span class="k">def</span> <span class="nf">mr_reader</span><span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="n">input_stream</span><span class="p">,</span> <span class="n">loads</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">loads</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Converts a file object with json serialised pyschema records</span>
+<span class="sd">        to a stream of pyschema objects</span>
+
+<span class="sd">    Can be used as job.reader in luigi.hadoop.JobTask</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">input_stream</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">),</span>
+
+</div>
+<div class="viewcode-block" id="mr_writer"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.luigi.mr_writer">[docs]</a><span class="k">def</span> <span class="nf">mr_writer</span><span class="p">(</span><span class="n">job</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">output_stream</span><span class="p">,</span>
+              <span class="n">stderr</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">dumps</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">dumps</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Writes a stream of json serialised pyschema Records to a file object</span>
+
+<span class="sd">    Can be used as job.writer in luigi.hadoop.JobTask</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">print</span> <span class="o">&gt;&gt;</span> <span class="n">output_stream</span><span class="p">,</span> <span class="n">dumps</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">core</span><span class="o">.</span><span class="n">ParseError</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">print</span> <span class="o">&gt;&gt;</span> <span class="n">stderr</span><span class="p">,</span> <span class="n">e</span>
+            <span class="k">raise</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Elias Freider.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,596 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyschema.core &mdash; PySchema 1.0a1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0a1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="PySchema 1.0a1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pyschema.core</h1><div class="highlight"><pre>
+<span class="c"># Copyright (c) 2013 Spotify AB</span>
+<span class="c">#</span>
+<span class="c"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;); you may not</span>
+<span class="c"># use this file except in compliance with the License. You may obtain a copy of</span>
+<span class="c"># the License at</span>
+<span class="c">#</span>
+<span class="c"># http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c">#</span>
+<span class="c"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS, WITHOUT</span>
+<span class="c"># WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the</span>
+<span class="c"># License for the specific language governing permissions and limitations under</span>
+<span class="c"># the License.</span>
+
+
+<span class="sd">&quot;&quot;&quot; Schema definition toolkit using Python classes</span>
+
+<span class="sd">Usage example:</span>
+
+<span class="sd">&gt;&gt;&gt; class Foo(Record):</span>
+<span class="sd">... bin = Bytes()</span>
+<span class="sd">...</span>
+<span class="sd">... class MyRecord(Record):</span>
+<span class="sd">...     a_string = Text()</span>
+<span class="sd">...     a_float = Float()</span>
+<span class="sd">...     record = List(SubRecord(Foo))</span>
+<span class="sd">...</span>
+<span class="sd">... rec = MyRecord(a_string=&quot;hej&quot;)</span>
+<span class="sd">... rec.record = [Foo(bin=&quot;bar&quot;)]</span>
+<span class="sd">...</span>
+<span class="sd">... s = dumps(rec)</span>
+<span class="sd">... print loads(s)</span>
+
+
+<span class="sd">Internals:</span>
+
+<span class="sd">A valid PySchema class contains the following class variables:</span>
+
+<span class="sd">`_fields`</span>
+<span class="sd">    An OrderedDict of `field_name` =&gt; `field_type`</span>
+<span class="sd">    where `field_type` is an instance of a Field subclass</span>
+
+<span class="sd">`_schema_name`</span>
+<span class="sd">    The qualifying name for this schema. This is used for registering a record</span>
+<span class="sd">    in a `SchemaStore` and for auto-identification of serialized records.</span>
+<span class="sd">    Should be unique within a specific SchemaStore, so if auto registering is</span>
+<span class="sd">    used it should be unique within the execution chain of the current program.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">izip</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">ordereddict</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simplejson</span> <span class="kn">as</span> <span class="nn">json</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">json</span>
+
+
+<span class="n">SCHEMA_FIELD_NAME</span> <span class="o">=</span> <span class="s">&quot;$schema&quot;</span>
+
+
+<div class="viewcode-block" id="set_schema_name_field"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.set_schema_name_field">[docs]</a><span class="k">def</span> <span class="nf">set_schema_name_field</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">SCHEMA_FIELD_NAME</span>
+    <span class="n">SCHEMA_FIELD_NAME</span> <span class="o">=</span> <span class="n">name</span>
+
+</div>
+<div class="viewcode-block" id="ParseError"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.ParseError">[docs]</a><span class="k">class</span> <span class="nc">ParseError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Generic exception type for Record parse errors &quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="SchemaStore"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.SchemaStore">[docs]</a><span class="k">class</span> <span class="nc">SchemaStore</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+<div class="viewcode-block" id="SchemaStore.add_record"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.SchemaStore.add_record">[docs]</a>    <span class="k">def</span> <span class="nf">add_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">_bump_stack_level</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add record class to record store for retrieval at record load time.</span>
+
+<span class="sd">            Can be used as a class decorator</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">existing</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s">&quot;{new_module}.{class_name} replaces record from {prev_module}&quot;</span>
+                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="n">schema</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                        <span class="n">prev_module</span><span class="o">=</span><span class="n">existing</span><span class="o">.</span><span class="n">__module__</span><span class="p">,</span>
+                        <span class="n">new_module</span><span class="o">=</span><span class="n">schema</span><span class="o">.</span><span class="n">__module__</span><span class="p">),</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span> <span class="k">if</span> <span class="n">_bump_stack_level</span> <span class="k">else</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="p">[</span><span class="n">schema</span><span class="o">.</span><span class="n">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">schema</span>
+        <span class="k">return</span> <span class="n">schema</span>
+</div>
+<div class="viewcode-block" id="SchemaStore.remove_record"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.SchemaStore.remove_record">[docs]</a>    <span class="k">def</span> <span class="nf">remove_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="p">[</span><span class="n">schema</span><span class="o">.</span><span class="n">__name__</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="SchemaStore.get"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.SchemaStore.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="p">[</span><span class="n">record_name</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="SchemaStore.clear"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.SchemaStore.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="SchemaStore.clone"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.SchemaStore.clone">[docs]</a>    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">SchemaStore</span><span class="p">()</span>
+        <span class="n">r</span><span class="o">.</span><span class="n">_schema_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">r</span>
+</div>
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">schema</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_map</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+
+
+<span class="c"># NO_DEFAULT is a special value to signify that a field has no default value</span>
+<span class="c"># and should fail to serialize unless a value has been assigned</span>
+<span class="c"># it&#39;s the default default-value for all non-nullable fields</span></div>
+<span class="n">NO_DEFAULT</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
+<span class="n">_UNTOUCHED</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="Field"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Field">[docs]</a><span class="k">class</span> <span class="nc">Field</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
+    <span class="n">_next_index</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">_UNTOUCHED</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="n">Field</span><span class="o">.</span><span class="n">_next_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nullable</span> <span class="o">=</span> <span class="n">nullable</span>
+        <span class="k">if</span> <span class="n">default</span> <span class="ow">is</span> <span class="n">_UNTOUCHED</span><span class="p">:</span>
+            <span class="c"># if default isn&#39;t explicitly set</span>
+            <span class="c"># use None for Nullables, and NO_DEFAULT for others</span>
+            <span class="k">if</span> <span class="n">nullable</span><span class="p">:</span>
+                <span class="n">default</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">default</span> <span class="o">=</span> <span class="n">NO_DEFAULT</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="n">Field</span><span class="o">.</span><span class="n">_next_index</span> <span class="o">+=</span> <span class="mi">1</span>  <span class="c"># used for arg order in initialization</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span>
+
+<div class="viewcode-block" id="Field.set_parent"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Field.set_parent">[docs]</a>    <span class="k">def</span> <span class="nf">set_parent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="c"># no-op by default but can be overridden by types</span>
+        <span class="c"># that need parent references</span>
+        <span class="k">pass</span>
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Field.dump"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Field.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Field.load"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Field.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Field.mixin"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Field.mixin">[docs]</a>    <span class="k">def</span> <span class="nf">mixin</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">mixin_cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Decorator for mixing in additional functionality into field type</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; @Integer.mixin</span>
+<span class="sd">        ... class IntegerPostgresExtensions:</span>
+<span class="sd">        ...     postgres_type = &#39;INT&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def postgres_dump(self, obj):</span>
+<span class="sd">        ...         self.dump(obj) + &quot;::integer&quot;</span>
+
+<span class="sd">        Is roughly equivalent to:</span>
+
+<span class="sd">        &gt;&gt;&gt; Integer.postgres_type = &#39;INT&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ... def postgres_dump(self, obj):</span>
+<span class="sd">        ...     self.dump(obj) + &quot;::integer&quot;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ... Integer.postgres_dump = postgres_dump</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">item_name</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">mixin_cls</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">item_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;__&quot;</span><span class="p">):</span>
+                <span class="c"># don&#39;t copy magic properties</span>
+                <span class="k">continue</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mixin_cls</span><span class="p">,</span> <span class="n">item_name</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">):</span>
+                <span class="c"># unbound method will cause problems</span>
+                <span class="c"># so get the underlying function instead</span>
+                <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">im_func</span>
+
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">item_name</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mixin_cls</span>
+</div>
+<div class="viewcode-block" id="Field.default_value"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Field.default_value">[docs]</a>    <span class="k">def</span> <span class="nf">default_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default</span>
+</div></div>
+<span class="n">auto_store</span> <span class="o">=</span> <span class="n">SchemaStore</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="PySchema"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.PySchema">[docs]</a><span class="k">class</span> <span class="nc">PySchema</span><span class="p">(</span><span class="n">ABCMeta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Metaclass for Records</span>
+
+<span class="sd">    Builds schema on Record declaration and remembers Record types</span>
+<span class="sd">    for easy generic parsing</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">auto_register</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">metacls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">):</span>
+        <span class="n">schema_attrs</span> <span class="o">=</span> <span class="n">metacls</span><span class="o">.</span><span class="n">_get_schema_attributes</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">bases</span><span class="o">=</span><span class="n">bases</span><span class="p">,</span>
+            <span class="n">dct</span><span class="o">=</span><span class="n">dct</span>
+        <span class="p">)</span>
+        <span class="n">dct</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">schema_attrs</span><span class="p">)</span>
+        <span class="n">cls</span> <span class="o">=</span> <span class="n">ABCMeta</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">metacls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">)</span>
+
+        <span class="c"># allow self-references etc.</span>
+        <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">field</span><span class="o">.</span><span class="n">set_parent</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">metacls</span><span class="o">.</span><span class="n">auto_register</span><span class="p">:</span>
+            <span class="n">auto_store</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">_bump_stack_level</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cls</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_field_dupe_warning</span><span class="p">(</span><span class="n">metacls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">fields</span><span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s">&quot;{schema}: Duplicate field definition for field{plural} {field}&quot;</span>
+                <span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">schema</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">field</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span>
+                    <span class="n">plural</span><span class="o">=</span><span class="s">&quot;s&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>
+                <span class="p">),</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span>
+        <span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_get_schema_attributes</span><span class="p">(</span><span class="n">metacls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">dct</span><span class="p">):</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">metacls</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="n">field_intersection</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">_fields</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">field_intersection</span><span class="p">:</span>
+                <span class="n">metacls</span><span class="o">.</span><span class="n">_field_dupe_warning</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">field_intersection</span><span class="p">)</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">_fields</span><span class="p">)</span>
+
+        <span class="n">new_fields</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_def</span> <span class="ow">in</span> <span class="n">dct</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">field_def</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+                <span class="n">new_fields</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">field_name</span><span class="p">,</span> <span class="n">field_def</span><span class="p">))</span>
+
+        <span class="n">new_fields</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">fd</span><span class="p">:</span> <span class="n">fd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">_index</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_def</span> <span class="ow">in</span> <span class="n">new_fields</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+                <span class="n">metacls</span><span class="o">.</span><span class="n">_field_dupe_warning</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">field_name</span><span class="p">,))</span>
+            <span class="n">fields</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">field_def</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&quot;_fields&quot;</span><span class="p">:</span> <span class="n">fields</span><span class="p">,</span>
+            <span class="s">&quot;_schema_name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="PySchema.from_class"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.PySchema.from_class">[docs]</a>    <span class="k">def</span> <span class="nf">from_class</span><span class="p">(</span><span class="n">metacls</span><span class="p">,</span> <span class="n">cls</span><span class="p">,</span> <span class="n">auto_store</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create proper PySchema class from cls</span>
+
+<span class="sd">        Any methods and attributes will be transferred to the</span>
+<span class="sd">        new object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">auto_store</span><span class="p">:</span>
+            <span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">cls</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">wrap</span> <span class="o">=</span> <span class="n">no_auto_store</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">wrap</span><span class="p">(</span><span class="n">metacls</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span>
+            <span class="n">metacls</span><span class="p">,</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">Record</span><span class="p">,),</span>
+            <span class="nb">dict</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+        <span class="p">))</span>
+
+</div></div>
+<div class="viewcode-block" id="disable_auto_register"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.disable_auto_register">[docs]</a><span class="k">def</span> <span class="nf">disable_auto_register</span><span class="p">():</span>
+    <span class="n">PySchema</span><span class="o">.</span><span class="n">auto_register</span> <span class="o">=</span> <span class="bp">False</span>
+
+</div>
+<div class="viewcode-block" id="enable_auto_register"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.enable_auto_register">[docs]</a><span class="k">def</span> <span class="nf">enable_auto_register</span><span class="p">():</span>
+    <span class="n">PySchema</span><span class="o">.</span><span class="n">auto_register</span> <span class="o">=</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="no_auto_store"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.no_auto_store">[docs]</a><span class="k">def</span> <span class="nf">no_auto_store</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Temporarily disable automatic registration of records in the auto_store</span>
+
+<span class="sd">    Decorator factory. This is _NOT_ thread safe</span>
+
+<span class="sd">    &gt;&gt;&gt; @no_auto_store()</span>
+<span class="sd">    ... class BarRecord(Record):</span>
+<span class="sd">    ...     pass</span>
+<span class="sd">    &gt;&gt;&gt; BarRecord in auto_store</span>
+<span class="sd">    False</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">original_auto_register_value</span> <span class="o">=</span> <span class="n">PySchema</span><span class="o">.</span><span class="n">auto_register</span>
+    <span class="n">disable_auto_register</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="n">PySchema</span><span class="o">.</span><span class="n">auto_register</span> <span class="o">=</span> <span class="n">original_auto_register_value</span>
+        <span class="k">return</span> <span class="n">cls</span>
+
+    <span class="k">return</span> <span class="n">decorator</span>
+
+</div>
+<span class="nd">@no_auto_store</span><span class="p">()</span>
+<div class="viewcode-block" id="Record"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.Record">[docs]</a><span class="k">class</span> <span class="nc">Record</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Abstract base class for structured logging records&quot;&quot;&quot;</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">PySchema</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">args</span><span class="p">:</span>
+            <span class="c"># The idea behind only allowing keyword arguments</span>
+            <span class="c"># is to prevent accidental misuse of a changed schema</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&#39;Non-keyword arguments not allowed&#39;</span>
+                            <span class="s">&#39; when initializing Records&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">field_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="nb">object</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">field_type</span><span class="o">.</span><span class="n">default_value</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="s">&quot;No field </span><span class="si">%r</span><span class="s"> in </span><span class="si">%s</span><span class="s">&quot;</span>
+                <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">Record</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;ascii&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">strings</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">=</span><span class="si">%r</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fname</span><span class="p">))</span>
+                   <span class="k">for</span> <span class="n">fname</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">iteritems</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_name</span> <span class="o">+</span> <span class="s">&#39;(&#39;</span> <span class="o">+</span> <span class="s">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">strings</span><span class="p">)</span> <span class="o">+</span> <span class="s">&#39;)&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__cmp__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Record</span><span class="p">):</span>
+            <span class="c"># return default implementation cmp value</span>
+            <span class="k">return</span> <span class="nb">cmp</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="n">other</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema_name</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">cmp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">)</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">_a</span><span class="p">,</span> <span class="n">_b</span> <span class="ow">in</span> <span class="n">izip</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">_a</span><span class="p">,</span> <span class="n">_b</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">r</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">r</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cmp__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cmp__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span>
+
+</div>
+<div class="viewcode-block" id="to_json_compatible"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.to_json_compatible">[docs]</a><span class="k">def</span> <span class="nf">to_json_compatible</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="s">&quot;Dump record in json-encodable object format&quot;</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">fname</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">fname</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">d</span>
+
+</div>
+<div class="viewcode-block" id="from_json_compatible"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.from_json_compatible">[docs]</a><span class="k">def</span> <span class="nf">from_json_compatible</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">dct</span><span class="p">):</span>
+    <span class="s">&quot;Load from json-encodable&quot;</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">dct</span><span class="p">:</span>
+        <span class="n">field_type</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">field_type</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ParseError</span><span class="p">(</span><span class="s">&quot;Unexpected field encountered in line for record </span><span class="si">%s</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">key</span><span class="p">))</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">field_type</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">dct</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">schema</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ispyschema"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.ispyschema">[docs]</a><span class="k">def</span> <span class="nf">ispyschema</span><span class="p">(</span><span class="n">schema</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Is object PySchema instance?</span>
+
+<span class="sd">    Returns true for PySchema Record *classes*</span>
+<span class="sd">    i.e. NOT when schema is a *Record* instance</span>
+
+<span class="sd">    &gt;&gt;&gt; class FooRecord(Record):</span>
+<span class="sd">    ...     pass</span>
+<span class="sd">    &gt;&gt;&gt; ispyschema(FooRecord)</span>
+<span class="sd">    True</span>
+<span class="sd">    &gt;&gt;&gt; ispyschema(FooRecord())</span>
+<span class="sd">    False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">PySchema</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="load_json_dct"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.load_json_dct">[docs]</a><span class="k">def</span> <span class="nf">load_json_dct</span><span class="p">(</span>
+        <span class="n">dct</span><span class="p">,</span>
+        <span class="n">record_store</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">schema</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">loader</span><span class="o">=</span><span class="n">from_json_compatible</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create a Record instance from a json-compatible dictionary</span>
+
+<span class="sd">    The dictionary values should have types that are json compatible,</span>
+<span class="sd">    as if just loaded from a json serialized record string.</span>
+
+<span class="sd">    :param dct:</span>
+<span class="sd">        Python dictionary with key/value pairs for the record</span>
+
+<span class="sd">    :param record_store:</span>
+<span class="sd">        Record store to use for schema lookups (when $schema field is present)</span>
+
+<span class="sd">    :param schema:</span>
+<span class="sd">        PySchema Record class for the record to load.</span>
+<span class="sd">        This will override any $schema fields specified in `dct`</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">schema</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">record_store</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">record_store</span> <span class="o">=</span> <span class="n">auto_store</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">schema_name</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SCHEMA_FIELD_NAME</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ParseError</span><span class="p">((</span>
+                <span class="s">&quot;Serialized record missing &#39;{0}&#39; &quot;</span>
+                <span class="s">&quot;record identifier and no schema supplied&quot;</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">SCHEMA_FIELD_NAME</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">schema</span> <span class="o">=</span> <span class="n">record_store</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">schema_name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ParseError</span><span class="p">(</span>
+                <span class="s">&quot;Can&#39;t recognize record type </span><span class="si">%r</span><span class="s">&quot;</span>
+                <span class="o">%</span> <span class="p">(</span><span class="n">schema_name</span><span class="p">,),</span> <span class="n">schema_name</span><span class="p">)</span>
+
+    <span class="c"># if schema is explicit, use that instead of SCHEMA_FIELD_NAME</span>
+    <span class="k">elif</span> <span class="n">SCHEMA_FIELD_NAME</span> <span class="ow">in</span> <span class="n">dct</span><span class="p">:</span>
+        <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">SCHEMA_FIELD_NAME</span><span class="p">)</span>
+
+    <span class="n">record</span> <span class="o">=</span> <span class="n">loader</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">dct</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">record</span>
+
+</div>
+<div class="viewcode-block" id="loads"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.loads">[docs]</a><span class="k">def</span> <span class="nf">loads</span><span class="p">(</span>
+        <span class="n">s</span><span class="p">,</span>
+        <span class="n">record_store</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">schema</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">loader</span><span class="o">=</span><span class="n">from_json_compatible</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create a Record instance from a json serialized dictionary</span>
+
+<span class="sd">    :param s:</span>
+<span class="sd">        String with a json-serialized dictionary</span>
+
+<span class="sd">    :param record_store:</span>
+<span class="sd">        Record store to use for schema lookups (when $schema field is present)</span>
+
+<span class="sd">    :param schema:</span>
+<span class="sd">        PySchema Record class for the record to load.</span>
+<span class="sd">        This will override any $schema fields specified in `s`</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">&#39;utf8&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">u&quot;{&quot;</span><span class="p">):</span>
+        <span class="n">json_dct</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">load_json_dct</span><span class="p">(</span><span class="n">json_dct</span><span class="p">,</span> <span class="n">record_store</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">loader</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ParseError</span><span class="p">(</span><span class="s">&quot;Not a json record&quot;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="dumps"><a class="viewcode-back" href="../../_api/pyschema.html#pyschema.core.dumps">[docs]</a><span class="k">def</span> <span class="nf">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attach_schema_name</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="n">json_dct</span> <span class="o">=</span> <span class="n">to_json_compatible</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">attach_schema_name</span><span class="p">:</span>
+        <span class="n">json_dct</span><span class="p">[</span><span class="n">SCHEMA_FIELD_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">_schema_name</span>
+    <span class="n">json_string</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">json_dct</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">json_string</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Elias Freider.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

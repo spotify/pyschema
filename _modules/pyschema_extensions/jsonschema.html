@@ -1,0 +1,257 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyschema_extensions.jsonschema &mdash; PySchema 1.0a1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0a1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="PySchema 1.0a1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for pyschema_extensions.jsonschema</h1><div class="highlight"><pre>
+<span class="c"># Copyright (c) 2014 Spotify AB</span>
+<span class="c">#</span>
+<span class="c"># Licensed under the Apache License, Version 2.0 (the &#39;License&#39;); you may not</span>
+<span class="c"># use this file except in compliance with the License. You may obtain a copy of</span>
+<span class="c"># the License at</span>
+<span class="c">#</span>
+<span class="c"># http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c">#</span>
+<span class="c"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c"># distributed under the License is distributed on an &#39;AS IS&#39; BASIS, WITHOUT</span>
+<span class="c"># WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the</span>
+<span class="c"># License for the specific language governing permissions and limitations under</span>
+<span class="c"># the License.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Extension for generating JSON schema schemas from PySchema classes</span>
+
+<span class="sd">JSON schema: http://json-schema.org/</span>
+
+<span class="sd">When dumping to JSON schema, all fields in a record are mandatory, although</span>
+<span class="sd">a list or map can be empty (but must be present). These records are still</span>
+<span class="sd">dump-able, but they will not validate against the schema.</span>
+
+<span class="sd">Usage:</span>
+
+<span class="sd">&gt;&gt;&gt; class MyRecord(pyschema.Record):</span>
+<span class="sd">&gt;&gt;&gt;     foo = Text()</span>
+<span class="sd">&gt;&gt;&gt;     bar = Integer()</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; [pyschema_extensions.jsonschema.]get_root_schema_string(MyRecord)</span>
+
+<span class="sd">&#39;{&quot;additionalProperties&quot;: false, &quot;required&quot;: [&quot;bar&quot;, &quot;foo&quot;], &quot;type&quot;: &quot;object&quot;, &quot;id&quot;: &quot;MyRecord&quot;, &quot;properties&quot;: {&quot;foo&quot;: {&quot;t</span>
+<span class="sd">ype&quot;: &quot;string&quot;}, &quot;bar&quot;: {&quot;type&quot;: &quot;integer&quot;}}}  &#39;</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">pyschema</span> <span class="kn">import</span> <span class="n">core</span>
+<span class="kn">from</span> <span class="nn">pyschema.types</span> <span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">Boolean</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Float</span>
+<span class="kn">from</span> <span class="nn">pyschema.types</span> <span class="kn">import</span> <span class="n">Text</span><span class="p">,</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Map</span><span class="p">,</span> <span class="n">SubRecord</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">ordereddict</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">simplejson</span> <span class="kn">as</span> <span class="nn">json</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">json</span>
+
+
+<span class="c"># Bytes are not supported</span>
+<span class="n">Boolean</span><span class="o">.</span><span class="n">jsonschema_type_name</span> <span class="o">=</span> <span class="s">&#39;boolean&#39;</span>
+<span class="n">Integer</span><span class="o">.</span><span class="n">jsonschema_type_name</span> <span class="o">=</span> <span class="s">&#39;integer&#39;</span>
+<span class="n">Float</span><span class="o">.</span><span class="n">jsonschema_type_name</span> <span class="o">=</span> <span class="s">&#39;number&#39;</span>
+<span class="n">Text</span><span class="o">.</span><span class="n">jsonschema_type_name</span> <span class="o">=</span> <span class="s">&#39;string&#39;</span>
+<span class="n">Enum</span><span class="o">.</span><span class="n">jsonschema_type_name</span> <span class="o">=</span> <span class="s">&#39;string&#39;</span>
+<span class="n">List</span><span class="o">.</span><span class="n">jsonschema_type_name</span> <span class="o">=</span> <span class="s">&#39;array&#39;</span>
+<span class="n">Map</span><span class="o">.</span><span class="n">avro_type_name</span> <span class="o">=</span> <span class="s">&#39;object&#39;</span>
+
+
+<span class="nd">@Field.mixin</span>
+<div class="viewcode-block" id="FieldMixin"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.FieldMixin">[docs]</a><span class="k">class</span> <span class="nc">FieldMixin</span><span class="p">:</span>
+<div class="viewcode-block" id="FieldMixin.jsonschema_type_schema"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.FieldMixin.jsonschema_type_schema">[docs]</a>    <span class="k">def</span> <span class="nf">jsonschema_type_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsonschema_type_name</span><span class="p">,</span>
+        <span class="p">}</span>
+
+</div></div>
+<span class="nd">@Enum.mixin</span>
+<div class="viewcode-block" id="EnumMixin"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.EnumMixin">[docs]</a><span class="k">class</span> <span class="nc">EnumMixin</span><span class="p">:</span>
+<div class="viewcode-block" id="EnumMixin.jsonschema_type_schema"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.EnumMixin.jsonschema_type_schema">[docs]</a>    <span class="k">def</span> <span class="nf">jsonschema_type_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsonschema_type_name</span><span class="p">,</span>
+            <span class="s">&#39;enum&#39;</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">)),</span>
+        <span class="p">}</span>
+
+</div></div>
+<span class="nd">@List.mixin</span>
+<div class="viewcode-block" id="ListMixin"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.ListMixin">[docs]</a><span class="k">class</span> <span class="nc">ListMixin</span><span class="p">:</span>
+<div class="viewcode-block" id="ListMixin.jsonschema_type_schema"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.ListMixin.jsonschema_type_schema">[docs]</a>    <span class="k">def</span> <span class="nf">jsonschema_type_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsonschema_type_name</span><span class="p">,</span>
+            <span class="s">&#39;items&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_type</span><span class="o">.</span><span class="n">jsonschema_type_schema</span><span class="p">(</span><span class="n">state</span><span class="p">),</span>
+        <span class="p">}</span>
+
+</div></div>
+<span class="nd">@Map.mixin</span>
+<div class="viewcode-block" id="MapMixin"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.MapMixin">[docs]</a><span class="k">class</span> <span class="nc">MapMixin</span><span class="p">:</span>
+<div class="viewcode-block" id="MapMixin.jsonschema_type_schema"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.MapMixin.jsonschema_type_schema">[docs]</a>    <span class="k">def</span> <span class="nf">jsonschema_type_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;type&#39;</span><span class="p">:</span> <span class="s">&#39;object&#39;</span><span class="p">,</span>
+            <span class="s">&#39;additionalProperties&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+            <span class="s">&#39;patternProperties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&#39;^.*$&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_type</span><span class="o">.</span><span class="n">jsonschema_type_schema</span><span class="p">(</span><span class="n">state</span><span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+</div></div>
+<span class="nd">@SubRecord.mixin</span>
+<div class="viewcode-block" id="SubRecordMixin"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.SubRecordMixin">[docs]</a><span class="k">class</span> <span class="nc">SubRecordMixin</span><span class="p">:</span>
+<div class="viewcode-block" id="SubRecordMixin.jsonschema_type_schema"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.SubRecordMixin.jsonschema_type_schema">[docs]</a>    <span class="k">def</span> <span class="nf">jsonschema_type_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="n">cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">record_schemas</span><span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_schema_dict</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&#39;$ref&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">jsonschema_type_name</span><span class="p">,</span>
+        <span class="p">}</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SubRecordMixin.jsonschema_type_name"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.SubRecordMixin.jsonschema_type_name">[docs]</a>    <span class="k">def</span> <span class="nf">jsonschema_type_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;#/definitions/{0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_schema</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">)</span>
+
+
+<span class="c"># Schema generation</span></div></div>
+<div class="viewcode-block" id="SchemaGeneratorState"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.SchemaGeneratorState">[docs]</a><span class="k">class</span> <span class="nc">SchemaGeneratorState</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record_schemas</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="get_schema_dict"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.get_schema_dict">[docs]</a><span class="k">def</span> <span class="nf">get_schema_dict</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a python dict representing the jsonschema of a record</span>
+
+<span class="sd">    Any references to sub-schemas will be URI fragments that won&#39;t be</span>
+<span class="sd">    resolvable without a root schema, available from get_root_schema_dict.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">state</span> <span class="ow">or</span> <span class="n">SchemaGeneratorState</span><span class="p">()</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([</span>
+        <span class="p">(</span><span class="s">&#39;type&#39;</span><span class="p">,</span> <span class="s">&#39;object&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">),</span>
+    <span class="p">])</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="n">field_type</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">fields</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">field_type</span><span class="o">.</span><span class="n">jsonschema_type_schema</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+    <span class="n">required</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fields</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">schema</span><span class="p">[</span><span class="s">&#39;properties&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fields</span>
+    <span class="n">schema</span><span class="p">[</span><span class="s">&#39;required&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">required</span><span class="p">))</span>
+    <span class="n">schema</span><span class="p">[</span><span class="s">&#39;additionalProperties&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="n">state</span><span class="o">.</span><span class="n">record_schemas</span><span class="p">[</span><span class="n">record</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">schema</span>
+    <span class="k">return</span> <span class="n">schema</span>
+
+</div>
+<div class="viewcode-block" id="get_root_schema_dict"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.get_root_schema_dict">[docs]</a><span class="k">def</span> <span class="nf">get_root_schema_dict</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a root jsonschema for a given record</span>
+
+<span class="sd">    A root schema includes the $schema attribute and all sub-record</span>
+<span class="sd">    schemas and definitions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">SchemaGeneratorState</span><span class="p">()</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">get_schema_dict</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">state</span><span class="o">.</span><span class="n">record_schemas</span><span class="p">[</span><span class="n">record</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">record_schemas</span><span class="p">:</span>
+        <span class="n">schema</span><span class="p">[</span><span class="s">&#39;definitions&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">sub_schema</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">record_schemas</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">schema</span><span class="p">[</span><span class="s">&#39;definitions&#39;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">sub_schema</span>
+    <span class="k">return</span> <span class="n">schema</span>
+
+</div>
+<div class="viewcode-block" id="get_root_schema_string"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.get_root_schema_string">[docs]</a><span class="k">def</span> <span class="nf">get_root_schema_string</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">get_root_schema_dict</span><span class="p">(</span><span class="n">record</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="dumps"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.dumps">[docs]</a><span class="k">def</span> <span class="nf">dumps</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">to_json_compatible</span><span class="p">(</span><span class="n">record</span><span class="p">))</span>
+
+</div>
+<div class="viewcode-block" id="loads"><a class="viewcode-back" href="../../_api_extensions/pyschema_extensions.html#pyschema_extensions.jsonschema.loads">[docs]</a><span class="k">def</span> <span class="nf">loads</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">record_store</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">core</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">record_store</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">core</span><span class="o">.</span><span class="n">from_json_compatible</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">PySchema 1.0a1 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Elias Freider.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

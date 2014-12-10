@@ -1,0 +1,4 @@
+* text=auto
+*.py diff=python
+*.js binary diff=javascript
+*.html diff=html

@@ -1,0 +1,30 @@
+pyschema package
+================
+
+Submodules
+----------
+
+pyschema.core module
+--------------------
+
+.. automodule:: pyschema.core
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pyschema.types module
+---------------------
+
+.. automodule:: pyschema.types
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: pyschema
+    :members:
+    :undoc-members:
+    :show-inheritance:

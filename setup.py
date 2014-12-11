@@ -15,21 +15,22 @@
 from setuptools import setup
 
 setup(
-    name='pyschema',
-    version='2.0.0',
-    description='Schema definition and serialisation library',
-    author='Elias Freider',
-    author_email='freider@spotify.com',
+    name="pyschema",
+    version="2.0.0",
+    description="Schema definition and serialisation library",
+    author="Elias Freider",
+    author_email="freider@spotify.com",
     url="http://github.com/spotify/pyschema",
     packages=[
-        'pyschema',
-        'pyschema_extensions'
+        "pyschema",
+        "pyschema_extensions"
     ],
+    keywords=["schema", "avro", "postgres", "json"],
     install_requires=[
-        'simplejson'
+        "simplejson"
     ],
     namespace_packages=[
-        'pyschema_extensions'
+        "pyschema_extensions"
     ],
-    test_suite='nose.collector'
+    test_suite="nose.collector"
 )

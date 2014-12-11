@@ -6,6 +6,5 @@ The foremost design principle when creating the library was to keep the definiti
 
 PySchema has been tested on Python 2.6 and Python 2.7
 
-
-For documentation and more info see LINK TO NOTEBOOK VIEWER GOES HERE
+For documentation and more info see http://spotify.github.io/pyschema/
 

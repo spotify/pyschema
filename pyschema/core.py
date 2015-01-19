@@ -67,11 +67,6 @@ except ImportError:
 SCHEMA_FIELD_NAME = "$schema"
 
 
-def set_schema_name_field(name):
-    global SCHEMA_FIELD_NAME
-    SCHEMA_FIELD_NAME = name
-
-
 class ParseError(Exception):
     """ Generic exception type for Record parse errors """
     pass
@@ -472,7 +467,8 @@ def loads(
         s,
         record_store=None,
         schema=None,
-        loader=from_json_compatible
+        loader=from_json_compatible,
+        record_class=None  # deprecated in favor of schema
 ):
     """ Create a Record instance from a json serialized dictionary
 
@@ -482,11 +478,24 @@ def loads(
     :param record_store:
         Record store to use for schema lookups (when $schema field is present)
 
+    :param loader:
+        Function called to fetch attributes from json. Typically shouldn't be used by end users
+
     :param schema:
         PySchema Record class for the record to load.
         This will override any $schema fields specified in `s`
 
+    :param record_class:
+        DEPRECATED option, old name for the `schema` parameter
+
     """
+    if record_class is not None:
+        warnings.warn(
+            "The record_class parameter is deprecated in favour of schema",
+            FutureWarning,
+            stacklevel=2
+        )
+        schema = record_class
     if not isinstance(s, unicode):
         s = s.decode('utf8')
     if s.startswith(u"{"):

@@ -16,14 +16,15 @@ from setuptools import setup
 
 setup(
     name="pyschema",
-    version="2.0.0",
+    version="2.1.0",
     description="Schema definition and serialisation library",
     author="Elias Freider",
     author_email="freider@spotify.com",
     url="http://github.com/spotify/pyschema",
     packages=[
         "pyschema",
-        "pyschema_extensions"
+        "pyschema_extensions",
+        "pyschema.contrib",  # deprecated package, replaced by pyschema_extensions
     ],
     keywords=["schema", "avro", "postgres", "json"],
     install_requires=[

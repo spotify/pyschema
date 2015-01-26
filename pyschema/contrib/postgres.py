@@ -3,7 +3,7 @@ import warnings
 warnings.warn(
     "pyschema.contrib.postgres is deprecated and will be removed.\n"
     "Please use the pyschema_extensions.postgres package instead.",
-    FutureWarning,
+    DeprecationWarning,
     stacklevel=2
 )
 

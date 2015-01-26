@@ -492,7 +492,7 @@ def loads(
     if record_class is not None:
         warnings.warn(
             "The record_class parameter is deprecated in favour of schema",
-            FutureWarning,
+            DeprecationWarning,
             stacklevel=2
         )
         schema = record_class

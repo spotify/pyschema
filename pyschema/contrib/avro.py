@@ -3,7 +3,7 @@ import warnings
 warnings.warn(
     "pyschema.contrib.avro is deprecated and will be removed.\n"
     "Please use the pyschema_extensions.avro package instead.",
-    FutureWarning,
+    DeprecationWarning,
     stacklevel=2
 )
 

@@ -15,22 +15,22 @@ class ContribIsImportableAndRaisesWarnings(TestCase):
         with warnings.catch_warnings(record=True) as warninglist:
             warnings.simplefilter("always")
             __import__(module_name)
-            self.assertTrue(any(isinstance(w.message, FutureWarning) for w in warninglist))
+            self.assertTrue(any(isinstance(w.message, DeprecationWarning) for w in warninglist))
 
     def avro_test(self):
-        self.assert_import_warns("pyschema.contrib.avro", FutureWarning)
+        self.assert_import_warns("pyschema.contrib.avro", DeprecationWarning)
 
     def postgres_test(self):
-        self.assert_import_warns("pyschema.contrib.postgres", FutureWarning)
+        self.assert_import_warns("pyschema.contrib.postgres", DeprecationWarning)
 
     def jsonschema_test(self):
-        self.assert_import_warns("pyschema.contrib.jsonschema", FutureWarning)
+        self.assert_import_warns("pyschema.contrib.jsonschema", DeprecationWarning)
 
     def luigi_test(self):
-        self.assert_import_warns("pyschema.contrib.luigi", FutureWarning)
+        self.assert_import_warns("pyschema.contrib.luigi", DeprecationWarning)
 
     def avro_to_pyschema_test(self):
-        self.assert_import_warns("pyschema.contrib.avro_to_pyschema", FutureWarning)
+        self.assert_import_warns("pyschema.contrib.avro_to_pyschema", DeprecationWarning)
 
 
 @core.no_auto_store()
@@ -49,7 +49,7 @@ class LoadsTakesRecordClassArgument(TestCase):
         with warnings.catch_warnings(record=True) as warninglist:
             warnings.simplefilter("always")
             obj = core.loads(s, record_class=Foo)
-        self.assertTrue(isinstance(warninglist[0].message, FutureWarning))
+        self.assertTrue(isinstance(warninglist[0].message, DeprecationWarning))
         self.assertEqual(
             obj,
             core.loads(s, schema=Foo)
@@ -60,7 +60,7 @@ class LoadsTakesRecordClassArgument(TestCase):
         with warnings.catch_warnings(record=True) as warninglist:
             warnings.simplefilter("always")
             obj = avro.loads(s, record_class=Foo)
-        self.assertTrue(isinstance(warninglist[0].message, FutureWarning))
+        self.assertTrue(isinstance(warninglist[0].message, DeprecationWarning))
         self.assertEqual(
             obj,
             avro.loads(s, schema=Foo)

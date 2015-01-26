@@ -3,7 +3,7 @@ import warnings
 warnings.warn(
     "pyschema.contrib.luigi is deprecated and will be removed.\n"
     "Please use the pyschema_extensions.luigi package instead.",
-    FutureWarning,
+    DeprecationWarning,
     stacklevel=2
 )
 

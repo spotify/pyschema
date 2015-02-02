@@ -27,6 +27,7 @@ Usage:
 "type": "record", "name": "MyRecord"}'
 
 """
+import warnings
 from pyschema import core
 from pyschema.types import Field, Boolean, Integer, Float
 from pyschema.types import Bytes, Text, Enum, List, Map, SubRecord
@@ -301,5 +302,18 @@ def from_json_compatible(schema, dct):
     return schema(**kwargs)
 
 
-def loads(s, record_store=None, schema=None):
+def loads(
+    s,
+    record_store=None,
+    schema=None,
+    record_class=None  # deprecated - replaced by `schema`
+):
+    if record_class is not None:
+        warnings.warn(
+            "The record_class parameter is deprecated in favour of schema",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        schema = record_class
+
     return core.loads(s, record_store, schema, from_json_compatible)

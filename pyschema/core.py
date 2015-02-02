@@ -114,6 +114,11 @@ class SchemaStore(object):
         return schema in self._schema_map.values()
 
 
+class RecordStore(SchemaStore):
+    def __init__(self):
+        warnings.warn("RecordStore is deprecated and has been renamed to SchemaStore", DeprecationWarning, stacklevel=2)
+        super(RecordStore, self).__init__()
+
 # NO_DEFAULT is a special value to signify that a field has no default value
 # and should fail to serialize unless a value has been assigned
 # it's the default default-value for all non-nullable fields

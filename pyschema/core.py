@@ -93,14 +93,25 @@ class SchemaStore(object):
                         new_module=schema.__module__),
                 stacklevel=3 if _bump_stack_level else 2)
 
-        self._schema_map[schema.__name__] = schema
+        full_name = get_full_name(schema)
+        self._schema_map[full_name] = schema
+        if '.' in full_name and schema.__name__ not in self._schema_map:
+            self._schema_map[schema.__name__] = schema
         return schema
 
-    def remove_record(self, schema):
-        del self._schema_map[schema.__name__]
-
     def get(self, record_name):
-        return self._schema_map[record_name]
+        """
+        Will return a matching record or raise KeyError is no record is found.
+
+        If the record name is a full name we will first check for a record matching the full name.
+        If no such record is found any record matching the last part of the full name (without the namespace) will
+        be returned.
+        """
+        if record_name in self._schema_map:
+            return self._schema_map[record_name]
+        else:
+            last_name = record_name.split('.')[-1]
+            return self._schema_map[last_name]
 
     def clear(self):
         self._schema_map.clear()
@@ -119,9 +130,21 @@ class RecordStore(SchemaStore):
         warnings.warn("RecordStore is deprecated and has been renamed to SchemaStore", DeprecationWarning, stacklevel=2)
         super(RecordStore, self).__init__()
 
+
+def get_full_name(schema):
+    full_name = schema.__name__
+    if hasattr(schema, '_namespace'):
+        full_name = '.'.join([schema._namespace, schema.__name__])
+    elif hasattr(schema, '_avro_namespace_'):
+        warnings.warn("_avro_namespace is deprecated, use _namespace instead", DeprecationWarning, stacklevel=3)
+        full_name = '.'.join([schema._avro_namespace_, schema.__name__])
+    return full_name
+
+
 # NO_DEFAULT is a special value to signify that a field has no default value
 # and should fail to serialize unless a value has been assigned
 # it's the default default-value for all non-nullable fields
+
 NO_DEFAULT = object()
 
 _UNTOUCHED = object()

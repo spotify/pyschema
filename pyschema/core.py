@@ -536,6 +536,7 @@ def loads(
 def dumps(obj, attach_schema_name=True):
     json_dct = to_json_compatible(obj)
     if attach_schema_name:
-        json_dct[SCHEMA_FIELD_NAME] = obj._schema_name
+        json_dct[SCHEMA_FIELD_NAME] = get_full_name(obj.__class__)
+
     json_string = json.dumps(json_dct)
     return json_string

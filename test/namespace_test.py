@@ -1,5 +1,6 @@
 import unittest
 import warnings
+import pyschema
 from pyschema import Record, RecordStore, no_auto_store
 from pyschema.types import *
 import namespaced_schemas
@@ -21,7 +22,7 @@ class NamespaceTest(unittest.TestCase):
     def test_records_with_same_name(self):
         """
         Add two records to the store. Both have the same name but different namespace. The one without namespace
-        should have priority over the one without when doing lookup without namespace
+        should have priority when doing lookup without namespace
         """
         store = RecordStore()
 
@@ -38,7 +39,7 @@ class NamespaceTest(unittest.TestCase):
     def test_records_with_same_name_reversed_order(self):
         """
         Add two records to the store. Both have the same name but different namespace. The one without namespace
-        should have priority over the one without when doing lookup without namespace
+        should have priority when doing lookup without namespace
         """
         store = RecordStore()
 
@@ -65,6 +66,20 @@ class NamespaceTest(unittest.TestCase):
         self.assertEquals(store.get('TestRecord'), namespaced_schemas.TestRecord)
         self.assertEquals(store.get('any.namespace.should.work.TestRecord'), namespaced_schemas.TestRecord)
         self.assertRaises(KeyError, store.get, 'OtherRecord')
+
+    def test_json_roundtrip(self):
+        store = RecordStore()
+        store.add_record(namespaced_schemas.TestRecord)
+        store.add_record(TestRecord)
+
+        namespace_instance = namespaced_schemas.TestRecord(a='test')
+        print 'DUMPS:' + pyschema.dumps(namespace_instance)
+        namespace_roundtrip = pyschema.loads(pyschema.dumps(namespace_instance), record_store=store)
+        self.assertTrue(isinstance(namespace_roundtrip, namespaced_schemas.TestRecord))
+
+        instance = TestRecord(a='test')
+        roundtrip = pyschema.loads(pyschema.dumps(instance), record_store=store)
+        self.assertTrue(isinstance(roundtrip, TestRecord))
 
     def test_deprecated_namespace(self):
         @no_auto_store()

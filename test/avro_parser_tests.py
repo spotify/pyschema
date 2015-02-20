@@ -50,7 +50,7 @@ class ParseThreeIncludingNullable(NoAutoRegister):
 
         for (gen_name, gen_type), (ref_name, ref_type) in zip(schema_class._fields.items(), self.references):
             self.assertEqual(gen_name, ref_name)
-            self.assertTrue(gen_type.congruent(ref_type), "Types for field {0!r} don't match".format(ref_name))
+            self.assertTrue(gen_type.is_similar_to(ref_type), "Types for field {0!r} don't match".format(ref_name))
 
     def test_roundtrip(self):
         schema_class = avro_parser.parse_schema_string(self.avsc)
@@ -322,14 +322,19 @@ class Supported(pyschema.Record):
     long_field = pyschema.Integer(description="some number")
     optional_string_field = pyschema.Text(description="")
     undocumented_string_field = pyschema.Text()
-    string_list = pyschema.List(pyschema.Text(nullable=False))
-    string_map = pyschema.Map(pyschema.Text(nullable=False), description="map of foo")
+    string_list = pyschema.List(pyschema.Text(nullable=False), nullable=True)
+    string_map = pyschema.Map(pyschema.Text(nullable=False), description="map of foo", nullable=True)
     bytes1 = pyschema.Bytes(description="bytes field 1")
     boolean1 = pyschema.Boolean(description="boolean field 1")
     another_string_field = pyschema.Text(description="What")
     boolean2 = pyschema.Boolean(description="boolean field 2")
     bytes2 = pyschema.Bytes(description="bytes field 2")
-    weird_characters = pyschema.Integer(description="\';drop table schemas;--\xc4\x80\xc4\x81\x00\x00\nhttp://uncyclopedia.wikia.com/wiki/AAAAAAAAA! \\ \xd0\xbc\xd0\xbd\xd0\xbe\xd0\xb3\xd0\xb0\xd0\xb1\xd1\x83\xd0\xba\xd0\xb0\xd1\x84 <script>alert(\"eh\")</script>(:,%)\'")
+    weird_characters = pyschema.Integer(
+        description=u"\';drop table schemas;--\u0100\u0101\x00\x00\n"
+                    u"http://uncyclopedia.wikia.com/wiki/AAAAAAAAA! "
+                    u"\\ \u043c\u043d\u043e\u0433\u0430\u0431\u0443"
+                    u"\u043a\u0430\u0444 <script>alert(\"eh\")</script>(:,%)\'"
+    )
     float2 = pyschema.Float(description="float field 2")
 
 unsupported_avro_schema = """{
@@ -369,12 +374,15 @@ class TestAvroToPySchema(NoAutoRegister):
         self.assertEquals(pyschema.core.get_full_name(a), pyschema.core.get_full_name(b))
         self.assertEquals(len(a._fields), len(b._fields))
         for (a_field_name, a_field), (b_field_name, b_field) in zip(a._fields.items(), b._fields.items()):
-            self.assertEquals(a_field_name, b_field_name)
-            self.assertTrue(a_field.congruent(b_field))
+            self.assertEquals(a_field_name, b_field_name, msg="field names don't match")
+            self.assertTrue(
+                a_field.is_similar_to(b_field),
+                "field {a_field_name!r} definitions don't match".format(**locals())
+            )
 
     def test_supported_avro_schema_succeeds(self):
         parsed = avro_parser.parse_schema_string(supported_avro_schema)
-        self.assertTrue(self.schemas_match(parsed, Supported))
+        self.schemas_match(parsed, Supported)
 
     def test_unsupported_avro_schema_fails(self):
         self.assertRaises(

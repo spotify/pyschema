@@ -71,8 +71,8 @@ class Bytes(Field):
             return self._dump_utf8_codepoints(binary_data)
         return self._dump_b64(binary_data)
 
-    def congruent(self, other):
-        return super(Bytes, self).congruent(other) and self.custom_encoding == other.custom_encoding
+    def is_similar_to(self, other):
+        return super(Bytes, self).is_similar_to(other) and self.custom_encoding == other.custom_encoding
 
 
 class List(Field):
@@ -102,8 +102,8 @@ class List(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
-    def congruent(self, other):
-        return super(List, self).congruent(other) and self.field_type.congruent(other.field_type)
+    def is_similar_to(self, other):
+        return super(List, self).is_similar_to(other) and self.field_type.is_similar_to(other.field_type)
 
 
 class Enum(Field):
@@ -128,8 +128,8 @@ class Enum(Field):
                 % (parsed, tuple(self.values)))
         return parsed
 
-    def congruent(self, other):
-        return super(Enum, self).congruent(other) and self.values == other.values
+    def is_similar_to(self, other):
+        return super(Enum, self).is_similar_to(other) and self.values == other.values
 
 
 class Integer(Field):
@@ -147,8 +147,8 @@ class Integer(Field):
             raise ParseError("%r is not a valid Integer" % (obj,))
         return obj
 
-    def congruent(self, other):
-        return super(Integer, self).congruent(other) and self.size == other.size
+    def is_similar_to(self, other):
+        return super(Integer, self).is_similar_to(other) and self.size == other.size
 
 
 class Boolean(Field):
@@ -183,8 +183,8 @@ class Float(Field):
             raise ParseError("Invalid value for Float field: %r" % obj)
         return float(obj)
 
-    def congruent(self, other):
-        return super(Float, self).congruent(other) and self.size == other.size
+    def is_similar_to(self, other):
+        return super(Float, self).is_similar_to(other) and self.size == other.size
 
 
 class Date(Text):
@@ -251,8 +251,8 @@ class SubRecord(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
-    def congruent(self, other):
-        return super(SubRecord, self).congruent(other) and self._schema == other._schema
+    def is_similar_to(self, other):
+        return super(SubRecord, self).is_similar_to(other) and self._schema == other._schema
 
 
 class Map(Field):
@@ -290,5 +290,5 @@ class Map(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
-    def congruent(self, other):
-        return super(Map, self).congruent(other) and self.value_type.congruent(other.value_type)
+    def is_similar_to(self, other):
+        return super(Map, self).is_similar_to(other) and self.value_type.is_similar_to(other.value_type)

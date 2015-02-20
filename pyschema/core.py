@@ -231,11 +231,12 @@ class Field(object):
     def default_value(self):
         return self.default
 
-    def congruent(self, other):
+    def is_similar_to(self, other):
         return(
             type(self) == type(other) and
             self.default == other.default and
-            self.nullable == other.nullable
+            self.nullable == other.nullable and
+            self.description == other.description
         )
 
 auto_store = SchemaStore()

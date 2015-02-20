@@ -109,7 +109,8 @@ class ParseMaps(ParseThreeIncludingNullable):
 }"""
     references = [
         ("m", pyschema.Map(pyschema.Integer())),
-        ("n", pyschema.Map(pyschema.Integer(), nullable=True))
+        ("n", pyschema.Map(pyschema.Integer(), nullable=True)),
+        ("o", pyschema.Map(pyschema.Integer(), nullable=True, default=None))
     ]
 
 
@@ -348,8 +349,8 @@ class Supported(pyschema.Record):
     long_field = pyschema.Integer(description="some number")
     optional_string_field = pyschema.Text(description="")
     undocumented_string_field = pyschema.Text()
-    string_list = pyschema.List(pyschema.Text(nullable=False), nullable=True)
-    string_map = pyschema.Map(pyschema.Text(nullable=False), description="map of foo", nullable=True)
+    string_list = pyschema.List(pyschema.Text(nullable=False), nullable=True, default=None)
+    string_map = pyschema.Map(pyschema.Text(nullable=False), description="map of foo", nullable=True, default=None)
     bytes1 = pyschema.Bytes(description="bytes field 1")
     boolean1 = pyschema.Boolean(description="boolean field 1")
     another_string_field = pyschema.Text(description="What")
@@ -403,7 +404,7 @@ class TestAvroToPySchema(NoAutoRegister, common.BaseTest):
             self.assertEquals(a_field_name, b_field_name, msg="field names don't match")
             self.assertTrue(
                 a_field.is_similar_to(b_field),
-                "field {a_field_name!r} definitions don't match".format(**locals())
+                "field {a_field_name!r} definitions don't match\n{a_field!r}\nvs\n{b_field!r}".format(**locals())
             )
 
     def test_supported_avro_schema_succeeds(self):

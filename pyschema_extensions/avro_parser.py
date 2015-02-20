@@ -53,13 +53,18 @@ def parse_schema_struct(schema_struct, _schemas=None):
         field_name = field_def["name"]
         field_builder = _get_field_builder(field_def["type"])
 
-        if "default" in field_def and field_def["default"] is not None:
-            default_parser = field_builder(nullable=False).avro_load
-            default_value = default_parser(field_def["default"])
-            field_builder = partial(field_builder, default=default_value)
+        if "default" in field_def:
+            if field_def["default"] is not None:
+                default_parser = field_builder(nullable=False).avro_load
+                default_value = default_parser(field_def["default"])
+            else:
+                default_value = None
+        else:
+            default_value = pyschema.core.NO_DEFAULT
 
         field = field_builder(
-            description=field_def.get("doc")
+            description=field_def.get("doc"),
+            default=default_value
         )
         field_dct[field_name] = field
         field_dct["__module__"] = "__avro_parser_runtime__"  # not great, but better than "abc"

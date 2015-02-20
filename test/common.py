@@ -18,4 +18,4 @@ class BaseTest(TestCase):
                     self.fail("{0} not in second's {1}".format(i, path))
                 self.recursive_compare(v1, v2, "{0}[{1}]".format(path, i))
         else:
-            self.assertEquals(node1, node2, "{0}: {1} != {2}".format(path, node1, node2))
+            self.assertEquals(node1, node2, u"{0}: {1} != {2}".format(path, node1, node2).encode("utf8"))

@@ -147,11 +147,15 @@ def get_full_name(schema):
     return full_name
 
 
+class _NoDefault:
+    def __repr__(self):
+        return "NO_DEFAULT"
+
 # NO_DEFAULT is a special value to signify that a field has no default value
 # and should fail to serialize unless a value has been assigned
 # it's the default default-value for all non-nullable fields
 
-NO_DEFAULT = object()
+NO_DEFAULT = _NoDefault()
 
 _UNTOUCHED = object()
 

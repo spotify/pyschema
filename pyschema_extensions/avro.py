@@ -164,7 +164,7 @@ class SubRecordMixin:
 
     @property
     def avro_type_name(self):
-        return core.get_full_name(self._record_class)
+        return core.get_full_name(self._schema)
 
     def avro_dump(self, obj):
         if obj is None:

@@ -36,7 +36,7 @@ class TextRecord2(Record):
 
 
 class TextRecord3(Record):
-    _avro_namespace_ = "blah.blah"
+    _namespace = "blah.blah"
     t = Text()
 
 
@@ -246,8 +246,8 @@ class TestAvro(BaseTest):
         self.assertTrue("bar" in new_s.j)
         self.assertEqual(new_s.j["foo"].t, "bar")
         self.assertEqual(new_s.j["bar"].t, "baz")
-        self.assertEquals(new_s.k, datetime.date(2014,4,20))
-        self.assertEquals(new_s.l, datetime.datetime(2014,4,20,12,0,0))
+        self.assertEquals(new_s.k, datetime.date(2014, 4, 20))
+        self.assertEquals(new_s.l, datetime.datetime(2014, 4, 20, 12, 0, 0))
         self.assertEquals(new_s.m, u"spotify")
         self.assertEquals(new_s.n, 1)
         self.assertEquals(new_s.o, all_bytes)
@@ -257,8 +257,7 @@ class TestAvro(BaseTest):
         self.assertEquals(new_s.s.t, u"ace")
         self.assertEquals(new_s.t.t, u"look")
         self.assertEquals(new_s.u.t, u"dog")
-        self.assertEquals(new_s.u._avro_namespace_, u"blah.blah")
-
+        self.assertEquals(new_s.u._namespace, u"blah.blah")
 
     def test_unset_list(self):
         @no_auto_store()

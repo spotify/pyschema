@@ -16,7 +16,6 @@ class TypeTests(TestCase):
         self.assertEquals(deserialized.field, output_value)
 
     def assertCompliant(self, record_cls, allowed_values, forbidden_values):
-        print record_cls
         for value in allowed_values:
             self.assertValue(record_cls, value, value)
 
@@ -25,7 +24,7 @@ class TypeTests(TestCase):
             self.assertEquals(rec.field, value)
 
             def dump_fail():
-                print(self.dumper(rec))
+                str(self.dumper(rec))
 
             self.assertRaises(
                 ValueError,

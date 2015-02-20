@@ -14,7 +14,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 from common import BaseTest
-from pyschema.contrib.avro_to_pyschema import get_pyschema_record
+from pyschema_extensions.avro_to_pyschema import get_pyschema_record
 
 supported_avro_schema = """{
   "name": "Supported",
@@ -205,7 +205,7 @@ unsupported_avro_schema = """{
 """
 
 
-class TestAvroToPySchema(BaseTest):
+class _TestAvroToPySchema(BaseTest):
     def test_supported_avro_schema_succeeds(self):
         subrecords = []
         actual = get_pyschema_record(supported_avro_schema, subrecords)

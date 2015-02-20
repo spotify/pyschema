@@ -225,6 +225,13 @@ class Field(object):
     def default_value(self):
         return self.default
 
+    def congruent(self, other):
+        return(
+            type(self) == type(other) and
+            self.default == other.default and
+            self.nullable == other.nullable
+        )
+
 auto_store = SchemaStore()
 
 

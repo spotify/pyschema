@@ -1,7 +1,7 @@
 import unittest
 import warnings
 import pyschema
-from pyschema import Record, RecordStore, no_auto_store
+from pyschema import Record, SchemaStore, no_auto_store
 from pyschema.types import *
 import namespaced_schemas
 
@@ -14,7 +14,7 @@ class TestRecord(Record):
 class NamespaceTest(unittest.TestCase):
 
     def test_get_record(self):
-        store = RecordStore()
+        store = SchemaStore()
         store.add_record(namespaced_schemas.TestRecord)
         self.assertEquals(store.get('TestRecord').__module__, 'test.namespaced_schemas')
         self.assertEquals(store.get('my.namespace.TestRecord').__module__, 'test.namespaced_schemas')
@@ -24,7 +24,7 @@ class NamespaceTest(unittest.TestCase):
         Add two records to the store. Both have the same name but different namespace. The one without namespace
         should have priority when doing lookup without namespace
         """
-        store = RecordStore()
+        store = SchemaStore()
 
         # Record with namespace will take 2 keys in the dict
         store.add_record(namespaced_schemas.TestRecord)
@@ -41,7 +41,7 @@ class NamespaceTest(unittest.TestCase):
         Add two records to the store. Both have the same name but different namespace. The one without namespace
         should have priority when doing lookup without namespace
         """
-        store = RecordStore()
+        store = SchemaStore()
 
         # Record without namespace will take 2 keys in dict
         store.add_record(TestRecord)
@@ -54,21 +54,21 @@ class NamespaceTest(unittest.TestCase):
         self.assertEquals(store.get('my.namespace.TestRecord'), namespaced_schemas.TestRecord)
 
     def test_get_without_namespace(self):
-        store = RecordStore()
+        store = SchemaStore()
         store.add_record(TestRecord)
         self.assertEquals(store.get('TestRecord'), TestRecord)
         self.assertEquals(store.get('any.namespace.should.work.TestRecord'), TestRecord)
         self.assertRaises(KeyError, store.get, 'OtherRecord')
 
     def test_get_without_namespace_namespaced_record(self):
-        store = RecordStore()
+        store = SchemaStore()
         store.add_record(namespaced_schemas.TestRecord)
         self.assertEquals(store.get('TestRecord'), namespaced_schemas.TestRecord)
         self.assertEquals(store.get('any.namespace.should.work.TestRecord'), namespaced_schemas.TestRecord)
         self.assertRaises(KeyError, store.get, 'OtherRecord')
 
     def test_json_roundtrip(self):
-        store = RecordStore()
+        store = SchemaStore()
         store.add_record(namespaced_schemas.TestRecord)
         store.add_record(TestRecord)
 
@@ -87,7 +87,7 @@ class NamespaceTest(unittest.TestCase):
             _avro_namespace_ = 'legacy'
             a = Text()
 
-        store = RecordStore()
+        store = SchemaStore()
 
         # Verify that we get a deprecation warning when we add the record
         with warnings.catch_warnings(record=True) as w:

@@ -71,6 +71,9 @@ class Bytes(Field):
             return self._dump_utf8_codepoints(binary_data)
         return self._dump_b64(binary_data)
 
+    def congruent(self, other):
+        return super(Bytes, self).congruent(other) and self.custom_encoding == other.custom_encoding
+
 
 class List(Field):
     """List of one other Field type
@@ -99,6 +102,9 @@ class List(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
+    def congruent(self, other):
+        return super(List, self).congruent(other) and self.field_type.congruent(other.field_type)
+
 
 class Enum(Field):
     _field_type = Text()  # don't change
@@ -122,6 +128,9 @@ class Enum(Field):
                 % (parsed, tuple(self.values)))
         return parsed
 
+    def congruent(self, other):
+        return super(Enum, self).congruent(other) and self.values == other.values
+
 
 class Integer(Field):
     def __init__(self, size=8, **kwargs):
@@ -137,6 +146,9 @@ class Integer(Field):
         if not isinstance(obj, (int, long, type(None))) or isinstance(obj, bool):
             raise ParseError("%r is not a valid Integer" % (obj,))
         return obj
+
+    def congruent(self, other):
+        return super(Integer, self).congruent(other) and self.size == other.size
 
 
 class Boolean(Field):
@@ -170,6 +182,9 @@ class Float(Field):
         if not isinstance(obj, float):
             raise ParseError("Invalid value for Float field: %r" % obj)
         return float(obj)
+
+    def congruent(self, other):
+        return super(Float, self).congruent(other) and self.size == other.size
 
 
 class Date(Text):
@@ -236,6 +251,9 @@ class SubRecord(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
+    def congruent(self, other):
+        return super(SubRecord, self).congruent(other) and self._schema == other._schema
+
 
 class Map(Field):
     """List of one other Field type
@@ -271,3 +289,6 @@ class Map(Field):
     def default_value(self):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
+
+    def congruent(self, other):
+        return super(Map, self).congruent(other) and self.value_type.congruent(other.value_type)

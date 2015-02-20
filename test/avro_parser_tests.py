@@ -13,7 +13,9 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+from __future__ import absolute_import
 from unittest import TestCase
+
 try:
     import simplejson as json
 except ImportError:
@@ -21,6 +23,7 @@ except ImportError:
 
 import pyschema
 from pyschema_extensions import avro_parser, avro
+from . import common
 
 
 class NoAutoRegister(TestCase):
@@ -74,6 +77,7 @@ class ParseThreeIncludingNullable(NoAutoRegister):
 
 
 class ParseMaps(ParseThreeIncludingNullable):
+    maxDiff = 2000
     schema_name = "MySchema"
     avsc = """
 {
@@ -93,6 +97,14 @@ class ParseMaps(ParseThreeIncludingNullable):
             "type": "map"
         }, "null"],
         "name": "n"
+    }, {
+        "default": null,
+        "type": ["null",
+        {
+            "values": ["null", "long"],
+            "type": "map"
+        }],
+        "name": "o"
     }]
 }"""
     references = [
@@ -383,7 +395,7 @@ unsupported_avro_schema = """{
 """
 
 
-class TestAvroToPySchema(NoAutoRegister):
+class TestAvroToPySchema(NoAutoRegister, common.BaseTest):
     def schemas_match(self, a, b):
         self.assertEquals(pyschema.core.get_full_name(a), pyschema.core.get_full_name(b))
         self.assertEquals(len(a._fields), len(b._fields))
@@ -404,3 +416,9 @@ class TestAvroToPySchema(NoAutoRegister):
             avro_parser.parse_schema_string,
             unsupported_avro_schema
         )
+
+    def test_two_way_equivalence(self):
+        schema_class = avro_parser.parse_schema_string(supported_avro_schema)
+        print schema_class._fields.items()[6], schema_class._fields.items()[6][1].default
+        recreated_avsc = avro.get_schema_dict(schema_class)
+        self.recursive_compare(json.loads(supported_avro_schema), recreated_avsc)

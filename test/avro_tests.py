@@ -41,11 +41,12 @@ class TextRecord3(Record):
 
 
 class SomeAvroRecord(Record):
+    """SomeAvroRecord contains a lot of cool stuff"""
     a = Text()
     b = Integer()
     c = Bytes()
     d = Boolean()
-    e = Float()
+    e = Float(description="hello world!")
     f = Enum([
         "FOO", "bar"
     ])
@@ -69,12 +70,13 @@ class SomeAvroRecord(Record):
 hand_crafted_schema_dict = {
     "type": "record",
     "name": "SomeAvroRecord",
+    "doc": "SomeAvroRecord contains a lot of cool stuff",
     "fields": [
         {"name": "a", "type": ["null", "string"], "default": None},
         {"name": "b", "type": ["null", "long"], "default": None},
         {"name": "c", "type": ["null", "bytes"], "default": None},
         {"name": "d", "type": ["null", "boolean"], "default": None},
-        {"name": "e", "type": ["null", "double"], "default": None},
+        {"name": "e", "type": ["null", "double"], "default": None, "doc": "hello world!"},
         {"name": "f", "type": ["null", {
             "type": "enum",
             "name": "ENUM",

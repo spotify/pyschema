@@ -131,7 +131,8 @@ def _parse_subrecord(type_def_struct):
     schema_class = parse_schema_struct(type_def_struct)
     return partial(
         pyschema.SubRecord,
-        schema_class
+        schema_class,
+        nullable=False
     )
 
 
@@ -139,5 +140,6 @@ def _parse_array(type_def_struct):
     item_type = _get_field_builder(type_def_struct["items"])()
     return partial(
         pyschema.List,
-        item_type
+        item_type,
+        nullable=False
     )

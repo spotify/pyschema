@@ -7,8 +7,9 @@ class BaseTest(TestCase):
             for k, v1 in node1.iteritems():
                 try:
                     v2 = node2[k]
-                except KeyError:
+                except (KeyError, TypeError):
                     self.fail("{0} not in second's {1} ({2})".format(k, path, node2))
+
                 self.recursive_compare(v1, v2, "{0}.{1}".format(path, k))
         elif isinstance(node1, list):
             for i, v1 in enumerate(node1):

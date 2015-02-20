@@ -132,7 +132,7 @@ class RetainDocs(NoAutoRegister):
         self.assertEqual(schema.a.description, u"this is a field")
 
 
-class BigRecord(NoAutoRegister):
+class BigRecord(NoAutoRegister, common.BaseTest):
     avsc = """
 {
   "type" : "record",
@@ -200,9 +200,12 @@ class BigRecord(NoAutoRegister):
     """
 
     def test_parse(self):
-        schema = avro_parser.parse_schema_string(self.avsc)
-        print avro.get_schema_string(schema)
+        avro_parser.parse_schema_string(self.avsc)
 
+    def test_two_way_equivalence(self):
+        schema_class = avro_parser.parse_schema_string(self.avsc)
+        recreated_avsc = avro.get_schema_dict(schema_class)
+        self.recursive_compare(json.loads(self.avsc), recreated_avsc)
 
 # the schema below was taken from the old avro_to_pyschema tests
 supported_avro_schema = """{
@@ -420,6 +423,5 @@ class TestAvroToPySchema(NoAutoRegister, common.BaseTest):
 
     def test_two_way_equivalence(self):
         schema_class = avro_parser.parse_schema_string(supported_avro_schema)
-        print schema_class._fields.items()[6], schema_class._fields.items()[6][1].default
         recreated_avsc = avro.get_schema_dict(schema_class)
         self.recursive_compare(json.loads(supported_avro_schema), recreated_avsc)

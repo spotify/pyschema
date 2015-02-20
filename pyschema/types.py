@@ -264,6 +264,9 @@ class SubRecord(Field):
     def is_similar_to(self, other):
         return super(SubRecord, self).is_similar_to(other) and self._schema == other._schema
 
+    def __repr__(self):
+        return "SubRecord(schema={self._schema.__name__}, nullable={self.nullable!r}, default={self.default!r}, description={self.description!r})".format(**locals())
+
 
 class Map(Field):
     """List of one other Field type

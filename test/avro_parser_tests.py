@@ -1,3 +1,4 @@
+# coding: utf-8
 from unittest import TestCase
 try:
     import simplejson as json
@@ -174,3 +175,210 @@ class BigRecord(NoAutoRegister):
     def test_parse(self):
         schema = avro_parser.parse_schema_string(self.avsc)
         print avro.get_schema_string(schema)
+
+
+# the schema below was taken from the old avro_to_pyschema tests
+supported_avro_schema = """{
+  "name": "Supported",
+  "type": "record",
+  "namespace": "com.spotify.pyschema.test",
+  "doc": "We have doc",
+  "fields": [
+    {
+      "name": "int_field",
+      "type": "int"
+    },
+    {
+      "name": "float1",
+      "type": "double"
+    },
+    {
+      "name": "required_string_field",
+      "type": "string"
+    },
+    {
+      "name": "long_field",
+      "type": [
+        "null",
+        "long"
+      ],
+      "doc": "some number",
+      "default": null
+    },
+    {
+      "name": "optional_string_field",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "",
+      "default": null
+    },
+    {
+      "name": "undocumented_string_field",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "string_list",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": "string"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "string_map",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": "string"
+        }
+      ],
+      "doc": "map of foo",
+      "default": null
+    },
+    {
+      "name": "bytes1",
+      "type": [
+        "null",
+        "bytes"
+      ],
+      "doc": "bytes field 1",
+      "default": null
+    },
+    {
+      "name": "boolean1",
+      "type": [
+        "null",
+        "boolean"
+      ],
+      "doc": "boolean field 1",
+      "default": null
+    },
+    {
+      "name": "another_string_field",
+      "type": [
+        "null",
+        "string"
+      ],
+      "doc": "What",
+      "default": null
+    },
+    {
+      "name": "boolean2",
+      "type": [
+        "null",
+        "boolean"
+      ],
+      "doc": "boolean field 2",
+      "default": null
+    },
+    {
+      "name": "bytes2",
+      "type": [
+        "null",
+        "bytes"
+      ],
+      "doc": "bytes field 2",
+      "default": null
+    },
+    {
+      "name": "weird_characters",
+      "type": [
+        "null",
+        "long"
+      ],
+      "doc": "';drop table schemas;--Āā\u0000\u0000\\nhttp://uncyclopedia.wikia.com/wiki/AAAAAAAAA! \\\\ многабукаф <script>alert(\\"eh\\")</script>(:,%)'",
+      "default": null
+    },
+    {
+      "name": "float2",
+      "type": [
+        "null",
+        "double"
+      ],
+      "doc": "float field 2",
+      "default": null
+    }
+  ]
+}
+"""
+
+
+class Supported(pyschema.Record):
+    """We have doc"""
+    _namespace = "com.spotify.pyschema.test"
+    int_field = pyschema.Integer(nullable=False, size=4)
+    float1 = pyschema.Float(nullable=False)
+    required_string_field = pyschema.Text(nullable=False)
+    long_field = pyschema.Integer(description="some number")
+    optional_string_field = pyschema.Text(description="")
+    undocumented_string_field = pyschema.Text()
+    string_list = pyschema.List(pyschema.Text(nullable=False))
+    string_map = pyschema.Map(pyschema.Text(nullable=False), description="map of foo")
+    bytes1 = pyschema.Bytes(description="bytes field 1")
+    boolean1 = pyschema.Boolean(description="boolean field 1")
+    another_string_field = pyschema.Text(description="What")
+    boolean2 = pyschema.Boolean(description="boolean field 2")
+    bytes2 = pyschema.Bytes(description="bytes field 2")
+    weird_characters = pyschema.Integer(description="\';drop table schemas;--\xc4\x80\xc4\x81\x00\x00\nhttp://uncyclopedia.wikia.com/wiki/AAAAAAAAA! \\ \xd0\xbc\xd0\xbd\xd0\xbe\xd0\xb3\xd0\xb0\xd0\xb1\xd1\x83\xd0\xba\xd0\xb0\xd1\x84 <script>alert(\"eh\")</script>(:,%)\'")
+    float2 = pyschema.Float(description="float field 2")
+
+unsupported_avro_schema = """{
+  "name": "Unsupported",
+  "type": "record",
+  "namespace": "com.spotify.pyschema.test",
+  "fields": [
+    {
+      "type": "int",
+      "name": "version"
+    },
+    {
+      "doc": "Not an union with null",
+      "default": 5135123,
+      "type": [
+        "int",
+        "string"
+      ],
+      "name": "onion"
+    },
+    {
+      "doc": "City of Stockholm",
+      "default": null,
+      "type": [
+        "null",
+        "string"
+      ],
+      "name": "city"
+    }
+  ]
+}
+"""
+
+
+class TestAvroToPySchema(NoAutoRegister):
+    def schemas_match(self, a, b):
+        self.assertEquals(pyschema.core.get_full_name(a), pyschema.core.get_full_name(b))
+        self.assertEquals(len(a._fields), len(b._fields))
+        for (a_field_name, a_field), (b_field_name, b_field) in zip(a._fields.items(), b._fields.items()):
+            self.assertEquals(a_field_name, b_field_name)
+            self.assertTrue(a_field.congruent(b_field))
+
+    def test_supported_avro_schema_succeeds(self):
+        parsed = avro_parser.parse_schema_string(supported_avro_schema)
+        self.assertTrue(self.schemas_match(parsed, Supported))
+
+    def test_unsupported_avro_schema_fails(self):
+        self.assertRaises(
+            avro_parser.AVSCParseException,
+            avro_parser.parse_schema_string,
+            unsupported_avro_schema
+        )

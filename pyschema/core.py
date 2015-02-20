@@ -84,20 +84,26 @@ class SchemaStore(object):
 
             Can be used as a class decorator
         """
-        existing = self._schema_map.get(schema.__name__, None)
+        full_name = get_full_name(schema)
+        self._force_add(full_name, schema, _bump_stack_level)
+        if '.' in full_name and schema.__name__ not in self._schema_map:
+            self._force_add(schema.__name__, schema, _bump_stack_level)
+        return schema
+
+    def _force_add(self, used_name, schema, _bump_stack_level=False):
+        existing = self._schema_map.get(used_name, None)
         if existing:
+            full_name = get_full_name(schema)
+            explanation = "(actually {0})".format() if full_name != used_name else ""
+
             warnings.warn(
-                "{new_module}.{class_name} replaces record from {prev_module}"
-                .format(class_name=schema.__name__,
+                "{used_name}{explanation}: old definition in {prev_module} replaced by definition in {new_module}"
+                .format(used_name=used_name,
+                        explanation=explanation,
                         prev_module=existing.__module__,
                         new_module=schema.__module__),
-                stacklevel=3 if _bump_stack_level else 2)
-
-        full_name = get_full_name(schema)
-        self._schema_map[full_name] = schema
-        if '.' in full_name and schema.__name__ not in self._schema_map:
-            self._schema_map[schema.__name__] = schema
-        return schema
+                stacklevel=4 if _bump_stack_level else 3)
+        self._schema_map[used_name] = schema
 
     def get(self, record_name):
         """

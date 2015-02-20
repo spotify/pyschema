@@ -31,8 +31,10 @@ class NamespaceTest(unittest.TestCase):
         self.assertEquals(store.get('TestRecord'), namespaced_schemas.TestRecord)
         self.assertEquals(store.get('my.namespace.TestRecord'), namespaced_schemas.TestRecord)
 
-        # Non namespace will replace the non-namespace key in dict
-        store.add_record(TestRecord)
+        with warnings.catch_warnings(record=True) as warninglist:
+            # Non namespace will replace the non-namespace key in dict
+            store.add_record(TestRecord)
+        self.assertEquals(len(warninglist), 1)  # warning when one definition gets replaced
         self.assertEquals(store.get('TestRecord'), TestRecord)
         self.assertEquals(store.get('my.namespace.TestRecord'), namespaced_schemas.TestRecord)
 
@@ -48,8 +50,10 @@ class NamespaceTest(unittest.TestCase):
         self.assertEquals(store.get('TestRecord'), TestRecord)
         self.assertEquals(store.get('my.namespace.TestRecord'), TestRecord)
 
-        # Record with namespace will not replace the base level record
-        store.add_record(namespaced_schemas.TestRecord)
+        with warnings.catch_warnings(record=True) as warninglist:
+            # Record with namespace will not replace the base level record
+            store.add_record(namespaced_schemas.TestRecord)
+        self.assertEquals(len(warninglist), 0, msg="there shouldn't be a 'replacement' warning")
         self.assertEquals(store.get('TestRecord'), TestRecord)
         self.assertEquals(store.get('my.namespace.TestRecord'), namespaced_schemas.TestRecord)
 
@@ -70,10 +74,11 @@ class NamespaceTest(unittest.TestCase):
     def test_json_roundtrip(self):
         store = SchemaStore()
         store.add_record(namespaced_schemas.TestRecord)
-        store.add_record(TestRecord)
+        with warnings.catch_warnings(record=True) as warninglist:
+            store.add_record(TestRecord)
+        self.assertEquals(len(warninglist), 1)
 
         namespace_instance = namespaced_schemas.TestRecord(a='test')
-        print 'DUMPS:' + pyschema.dumps(namespace_instance)
         namespace_roundtrip = pyschema.loads(pyschema.dumps(namespace_instance), record_store=store)
         self.assertTrue(isinstance(namespace_roundtrip, namespaced_schemas.TestRecord))
 

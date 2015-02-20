@@ -8,13 +8,15 @@ import pyschema
 from pyschema_extensions import avro_parser, avro
 
 
-class ParseThreeIncludingNullable(TestCase):
+class NoAutoRegister(TestCase):
     def setUp(self):
         pyschema.disable_auto_register()
 
     def tearDown(self):
         pyschema.enable_auto_register()
 
+
+class ParseThreeIncludingNullable(NoAutoRegister):
     schema_name = "FooRecord"
     avsc = """
 {
@@ -84,7 +86,7 @@ class ParseMaps(ParseThreeIncludingNullable):
     ]
 
 
-class RetainDocs(TestCase):
+class RetainDocs(NoAutoRegister):
     avsc = """
 {
     "name": "Foo",
@@ -102,7 +104,7 @@ class RetainDocs(TestCase):
         self.assertEqual(schema.a.description, u"this is a field")
 
 
-class BigRecord(TestCase):
+class BigRecord(NoAutoRegister):
     avsc = """
 {
   "type" : "record",

@@ -47,6 +47,7 @@ def parse_schema_struct(schema_struct, _schemas=None):
             description=field_def.get("doc")
         )
         field_dct[field_name] = field
+        field_dct["__module__"] = "__avro_parser_runtime__"  # not great, but better than "abc"
 
     if "doc" in schema_struct:
         field_dct["__doc__"] = schema_struct["doc"]

@@ -11,10 +11,13 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations under
 # the License.
+from __future__ import absolute_import
 
-from core import PySchema, Record, dumps, loads, ispyschema, SchemaStore
-from core import disable_auto_register, enable_auto_register, no_auto_store
-from core import NO_DEFAULT
-from types import *
+from pyschema.core import (
+    PySchema, Record, dumps, loads, ispyschema, SchemaStore,
+    disable_auto_register, enable_auto_register, no_auto_store,
+    NO_DEFAULT
+)
+from pyschema.types import *
 import warnings
 warnings.simplefilter('default')

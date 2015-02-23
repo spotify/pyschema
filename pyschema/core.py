@@ -179,8 +179,19 @@ class Field(object):
         self.default = default
         Field._next_index += 1  # used for arg order in initialization
 
+    def repr_vars(self):
+        """Return a dictionary the field definition
+
+        Should contain all fields that are required for the definition of this field in a pyschema class"""
+        d = {"nullable": repr(self.nullable),
+             "default": repr(self.default)}
+        if self.description is not None:
+            d["description"] = repr(self.description)
+        return d
+
     def __repr__(self):
-        return self.__class__.__name__
+        strings = ('{0}={1}'.format(vname, val) for vname, val in self.repr_vars().iteritems())
+        return self.__class__.__name__ + '(' + ', '.join(strings) + ')'
 
     def set_parent(self, schema):
         # no-op by default but can be overridden by types

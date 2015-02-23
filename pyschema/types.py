@@ -36,9 +36,6 @@ class Text(Field):
                     "%r is not a valid UTF-8 string" % obj
                 )
 
-    def __repr__(self):
-        return "Text(nullable={self.nullable!r}, default={self.default!r}, description={self.description!r})".format(**locals())
-
 
 class Bytes(Field):
     """Binary data"""
@@ -108,12 +105,10 @@ class List(Field):
     def is_similar_to(self, other):
         return super(List, self).is_similar_to(other) and self.field_type.is_similar_to(other.field_type)
 
-    def __repr__(self):
-        item_type_repr = repr(self.field_type)
-        return (
-            "List({item_type_repr}, nullable={self.nullable}, "
-            "default={self.default!r}, description={self.description!r})"
-        ).format(**locals())
+    def repr_vars(self):
+        base = super(List, self).repr_vars()
+        base["field_type"] = repr(self.field_type)
+        return base
 
 
 class Enum(Field):
@@ -264,8 +259,10 @@ class SubRecord(Field):
     def is_similar_to(self, other):
         return super(SubRecord, self).is_similar_to(other) and self._schema == other._schema
 
-    def __repr__(self):
-        return "SubRecord(schema={self._schema.__name__}, nullable={self.nullable!r}, default={self.default!r}, description={self.description!r})".format(**locals())
+    def repr_vars(self):
+        d = super(SubRecord, self).repr_vars()
+        d["schema"] = self._schema._schema_name
+        return d
 
 
 class Map(Field):
@@ -305,3 +302,8 @@ class Map(Field):
 
     def is_similar_to(self, other):
         return super(Map, self).is_similar_to(other) and self.value_type.is_similar_to(other.value_type)
+
+    def repr_vars(self):
+        d = super(Map, self).repr_vars()
+        d["value_type"] = repr(self.value_type)
+        return d

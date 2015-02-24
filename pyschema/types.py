@@ -17,6 +17,21 @@ import core
 import copy
 from core import ParseError, Field
 import binascii
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
+
+def ordereddict_push_front(dct, key, value):
+    """Set a value at the front of an OrderedDict
+
+    The original dict isn't modified, instead a copy is returned
+    """
+    d = OrderedDict()
+    d[key] = value
+    d.update(dct)
+    return d
 
 
 class Text(Field):
@@ -106,9 +121,11 @@ class List(Field):
         return super(List, self).is_similar_to(other) and self.field_type.is_similar_to(other.field_type)
 
     def repr_vars(self):
-        base = super(List, self).repr_vars()
-        base["field_type"] = repr(self.field_type)
-        return base
+        return ordereddict_push_front(
+            super(List, self).repr_vars(),
+            "field_type",
+            repr(self.field_type)
+        )
 
 
 class Enum(Field):
@@ -260,9 +277,11 @@ class SubRecord(Field):
         return super(SubRecord, self).is_similar_to(other) and self._schema == other._schema
 
     def repr_vars(self):
-        d = super(SubRecord, self).repr_vars()
-        d["schema"] = self._schema._schema_name
-        return d
+        return ordereddict_push_front(
+            super(SubRecord, self).repr_vars(),
+            "schema",
+            repr(self._schema._schema_name)
+        )
 
 
 class Map(Field):
@@ -304,6 +323,8 @@ class Map(Field):
         return super(Map, self).is_similar_to(other) and self.value_type.is_similar_to(other.value_type)
 
     def repr_vars(self):
-        d = super(Map, self).repr_vars()
-        d["value_type"] = repr(self.value_type)
-        return d
+        return ordereddict_push_front(
+            super(Map, self).repr_vars(),
+            "value_type",
+            repr(self.value_type)
+        )

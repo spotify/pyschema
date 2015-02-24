@@ -183,8 +183,9 @@ class Field(object):
         """Return a dictionary the field definition
 
         Should contain all fields that are required for the definition of this field in a pyschema class"""
-        d = {"nullable": repr(self.nullable),
-             "default": repr(self.default)}
+        d = OrderedDict()
+        d["nullable"] = repr(self.nullable)
+        d["default"] = repr(self.default)
         if self.description is not None:
             d["description"] = repr(self.description)
         return d

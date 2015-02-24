@@ -8,7 +8,7 @@ from pyschema import Record, Text, Integer, Boolean, Bytes
 from pyschema import Float, Enum, List, SubRecord, Map
 import pyschema
 import pyschema_extensions.avro
-import os.path
+import os
 
 
 @pyschema.no_auto_store()
@@ -112,16 +112,17 @@ class RepeatedSubRecordRecord(Record):
     r2 = SubRecord(TextRecord)
 
 
-avro_tools_path = "{0}/../../avro-tools-1.7.5.jar".format(
-    os.path.dirname(os.path.realpath(__file__)))
+# typically, this could be "java -jar /my/path/to/avro-tools-1.7.5.jar"
+# but if you have installed avro-tools as a package there might be a command shortcut
+avro_tools_cmd = os.environ.get("AVRO_TOOLS_CMD", "avro-tools")
 
 
 def avro_roundtrip(record_type, record, schema=None, json_record=None):
     schema = schema or pyschema_extensions.avro.get_schema_string(record_type)
     json_record = json_record or pyschema_extensions.avro.dumps(record)
 
-    read_cmd = ["java", "-jar", avro_tools_path, "fragtojson", schema, "-"]
-    write_cmd = ["java", "-jar", avro_tools_path, "jsontofrag", schema, "-"]
+    read_cmd = [avro_tools_cmd, "fragtojson", schema, "-"]
+    write_cmd = [avro_tools_cmd, "jsontofrag", schema, "-"]
     writer = subprocess.Popen(
         write_cmd,
         stdin=subprocess.PIPE,

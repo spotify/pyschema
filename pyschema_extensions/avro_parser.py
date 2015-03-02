@@ -73,7 +73,7 @@ def parse_schema_struct(schema_struct, _schemas=None):
 
     if "doc" in schema_struct:
         field_dct["__doc__"] = schema_struct["doc"]
-    schema = pyschema.core.PySchema(record_name, (pyschema.core.Record,), field_dct)
+    schema = pyschema.core.PySchema(record_name.encode("ascii"), (pyschema.core.Record,), field_dct)
     return schema
 
 

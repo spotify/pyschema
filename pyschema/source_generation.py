@@ -1,9 +1,10 @@
-from functools import cmp_to_key
 from pyschema import types
 import pyschema
 
+DEFAULT_INDENT = " " * 4
 
-def to_python_source(classes, indent=" " * 4):
+
+def to_python_source(classes, indent=DEFAULT_INDENT):
     """Convert a set of pyschemas to executable python source code
 
     Currently supports all built-in types for basic usage.
@@ -16,9 +17,8 @@ def to_python_source(classes, indent=" " * 4):
     return header_source() + "\n" + classes_source(classes, indent)
 
 
-def classes_source(classes, indent):
-    key_func = cmp_to_key(ref_comparator)
-    ordered = sorted(classes, key=key_func)
+def classes_source(classes, indent=DEFAULT_INDENT):
+    ordered = sorted(classes, cmp=ref_comparator)
     return "\n\n".join([_class_source(c, indent) for c in ordered])
 
 
@@ -46,7 +46,7 @@ def _class_source(schema, indent):
     )
     if hasattr(schema, '_namespace'):
         optional_namespace_def = "{indent}_namespace = {namespace!r}\n".format(
-            namsepace=schema._namespace, indent=indent)
+            namespace=schema._namespace, indent=indent)
     else:
         optional_namespace_def = ""
 

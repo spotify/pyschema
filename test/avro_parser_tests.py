@@ -114,6 +114,18 @@ class ParseMaps(ParseThreeIncludingNullable):
     ]
 
 
+class ParseEnum(TestCase):
+    def test_can_parse_field(self):
+        field = avro_parser._parse_complex(
+            {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsNotSupportedYet'}
+        )
+        self.assertTrue(
+            field.is_similar_to(
+                pyschema.Enum(["FOO", "BAR"])
+            )
+        )
+
+
 class RetainDocs(NoAutoRegister):
     avsc = """
 {

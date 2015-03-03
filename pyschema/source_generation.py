@@ -18,7 +18,12 @@ def to_python_source(classes, indent=DEFAULT_INDENT):
 
 
 def classes_source(classes, indent=DEFAULT_INDENT):
-    ordered = sorted(classes, cmp=ref_comparator)
+    all_classes = set(classes)
+    for c in classes:
+        referenced_schemas = find_subrecords(c)
+        all_classes |= set(referenced_schemas)
+
+    ordered = sorted(all_classes, cmp=ref_comparator)
     return "\n\n".join([_class_source(c, indent) for c in ordered])
 
 
@@ -81,7 +86,25 @@ def ref_comparator(a, b):
         return 0
 
 
+def find_subrecords(a, include_this=False):
+    subs = set()
+    if pyschema.ispyschema(a):
+        if include_this:
+            subs.add(a)
+        for _, field in a._fields.iteritems():
+            subs |= find_subrecords(field, True)
+    elif isinstance(a, types.List):
+        subs |= find_subrecords(a.field_type, True)
+    elif isinstance(a, types.Map):
+        subs |= find_subrecords(a.value_type, True)
+    elif isinstance(a, types.SubRecord):
+        subs |= find_subrecords(a._schema, True)
+    return subs
+
+
 def has_directed_link(a, b):
+    # TODO: refactor to use find_subrecords instead
+    #       to reduce duplication
     if pyschema.ispyschema(a):
         if a == b:
             return True

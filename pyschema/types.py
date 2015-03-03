@@ -153,6 +153,13 @@ class Enum(Field):
     def is_similar_to(self, other):
         return super(Enum, self).is_similar_to(other) and self.values == other.values
 
+    def repr_vars(self):
+        return ordereddict_push_front(
+            super(Enum, self).repr_vars(),
+            "values",
+            self.values
+        )
+
 
 class Integer(Field):
     def __init__(self, size=8, **kwargs):
@@ -280,7 +287,7 @@ class SubRecord(Field):
         return ordereddict_push_front(
             super(SubRecord, self).repr_vars(),
             "schema",
-            repr(self._schema._schema_name)
+            self._schema._schema_name
         )
 
 

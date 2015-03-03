@@ -102,17 +102,6 @@ def _parse_union(union_struct):
     return partial(field_builder, nullable=nullable)
 
 
-def _parse_complex(type_def_struct):
-    if type_def_struct["type"] == "map":
-        return _parse_map(type_def_struct)
-    elif type_def_struct["type"] == "record":
-        return _parse_subrecord(type_def_struct)
-    elif type_def_struct["type"] == "array":
-        return _parse_array(type_def_struct)
-
-    raise AVSCParseException("Unknown complex type: {0}".format(type_def_struct))
-
-
 def _parse_map(type_def_struct):
     values_field_builder = _get_field_builder(type_def_struct["values"])
     return partial(
@@ -143,3 +132,29 @@ def _parse_array(type_def_struct):
         item_type,
         nullable=False
     )
+
+
+def _parse_enum(type_def_struct):
+    # copy and make a tuple just to ensure it isn't modified later
+    values = tuple(type_def_struct["symbols"])
+    return partial(
+        pyschema.Enum,
+        values,
+        nullable=False
+    )
+
+
+COMPLEX_MAPPING = {
+    "map": _parse_map,
+    "record": _parse_subrecord,
+    "array": _parse_array,
+    "enum": _parse_enum
+}
+
+
+def _parse_complex(type_def_struct):
+    typename = type_def_struct["type"]
+    parser_func = COMPLEX_MAPPING.get(typename)
+    if parser_func:
+        return parser_func(type_def_struct)
+    raise AVSCParseException("Unknown complex type: {0}".format(type_def_struct))

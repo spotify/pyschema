@@ -10,7 +10,7 @@ class Expression(object):
         pass
 
     def __repr__(self):
-        return self.render()
+        return self.render("default")
 
 
 class Symbol(Expression):
@@ -18,7 +18,7 @@ class Symbol(Expression):
         self.name = name
         self.namespace = namespace
 
-    def render(self):
+    def render(self, syntax):
         if self.namespace:
             return "{}.{}".format(self.namespace, self.name)
         return self.name
@@ -30,10 +30,10 @@ class Multiplication(Expression):
         self.left = left
         self.right = right
 
-    def render(self):
+    def render(self, syntax):
         return "({}) * ({})".format(
-            self.left.render(),
-            self.right.render()
+            self.left.render(syntax),
+            self.right.render(syntax)
         )
 
 
@@ -43,10 +43,15 @@ class EqualityCheck(Expression):
         self.left = left
         self.right = right
 
-    def render(self):
+    def render(self, syntax):
+        if syntax == "sql":
+            return "({}) = ({})".format(
+                self.left.render(syntax),
+                self.right.render(syntax)
+            )
         return "({}) == ({})".format(
-            self.left.render(),
-            self.right.render()
+            self.left.render(syntax),
+            self.right.render(syntax)
         )
 
 
@@ -54,8 +59,8 @@ class BooleanValued(Expression):
     def __init__(self, proxy):
         self.proxy = proxy
 
-    def render(self):
-        return self.proxy.render()
+    def render(self, syntax):
+        return self.proxy.render(syntax)
 
     def __repr__(self):
         return "BooleanValued: " + super(BooleanValued, self).__repr__()
@@ -108,8 +113,8 @@ class IntegerValued(Expression):
     def __req__(self, other):
         return self.eq(other, reverse=True)
 
-    def render(self):
-        return self.proxy.render()
+    def render(self, syntax):
+        return self.proxy.render(syntax)
 
     def __repr__(self):
         return "IntegerValued: " + super(IntegerValued, self).__repr__()
@@ -128,7 +133,7 @@ class IntegerConstant(Expression):
     def __init__(self, value):
         self.value = value
 
-    def render(self):
+    def render(self, syntax):
         return str(self.value)
 
 
@@ -143,26 +148,41 @@ SYMBOLMAP = {
 }
 
 
+class Selection(object):
+    def __init__(self, table, expression):
+        self.table = table
+        self.expression = expression
+
+    def sql(self):
+        return "SELECT * FROM {table._name} WHERE {expr}".format(
+            table=self.table,
+            expr=self.expression.render("sql")
+        )
+
+
 class Table(dict):
+    def __init__(self, schema, ref_name):
+        self._name = ref_name
+        self._fields = {}
+
+        for field_name, field in schema._fields.items():
+            symcls = SYMBOLMAP.get(type(field))
+            symcls(ref_name, ref_name)
+            self._fields[field_name] = symcls(ref_name + "." + field_name)
+
     def __getattr__(self, name):
-        return self[name]
+        return self._fields[name]
 
+    def __getitem__(self, expression):
+        if isinstance(expression, Expression):
+            return Selection(self, expression)
 
-def symbols(schema, object_name):
-    syms = Table()
-    for name, field in schema._fields.items():
-        symcls = SYMBOLMAP.get(type(field))
-        if not symcls:
-            assert False
-        else:
-            setattr(syms, name, symcls(name, object_name))
-
-    return syms
 
 if __name__ == "__main__":
     class Foo(pyschema.Record):
         i = pyschema.Integer()
 
-    mytable = symbols(Foo, "mytable")
-    other = symbols(Foo, "other")
+    mytable = Table(Foo, "mytable")
+    other = Table(Foo, "other")
     print 5 * mytable.i == mytable.i
+    print mytable[mytable.i == other.i * 2].sql()

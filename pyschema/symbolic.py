@@ -148,7 +148,36 @@ SYMBOLMAP = {
 }
 
 
-class Selection(object):
+class View(dict):
+    def __init__(self, fields):
+        self._fields = fields
+
+    def __getattr__(self, name):
+        if name not in self._fields:
+            raise AttributeError("View has no attribute {}".format(
+                self._name, pyschema.core.get_full_name(self._schema), name))
+        return self._fields[name]
+
+    def __getitem__(self, expression):
+        if isinstance(expression, Expression):
+            return Selection(self, expression)
+
+
+class Table(View):
+    def __init__(self, schema, ref_name):
+        self._schema = schema
+        self._name = ref_name
+        fields = {}
+
+        for field_name, field in schema._fields.items():
+            symcls = SYMBOLMAP.get(type(field))
+            symcls(ref_name, ref_name)
+            fields[field_name] = symcls(ref_name + "." + field_name)
+
+        super(Table, self).__init__(fields)
+
+
+class Selection(View):
     def __init__(self, table, expression):
         self.table = table
         self.expression = expression
@@ -166,26 +195,26 @@ class Selection(object):
         )
 
 
-class Table(dict):
-    def __init__(self, schema, ref_name):
-        self._schema = schema
-        self._name = ref_name
-        self._fields = {}
+class InnerJoin(View):
+    def __init__(self, left, right, condition):
+        self.left = left
+        self.right = right
+        self.join_condition = condition
+        all_fields = dict(self.left._fields.items() + self.right._fields.items())
+        super(InnerJoin, self).__init__(all_fields)
 
-        for field_name, field in schema._fields.items():
-            symcls = SYMBOLMAP.get(type(field))
-            symcls(ref_name, ref_name)
-            self._fields[field_name] = symcls(ref_name + "." + field_name)
+    def sql(self):
+        selected_fields = ", ".join(f.render("sql") for f in self._fields.values())
 
-    def __getattr__(self, name):
-        if name not in self._fields:
-            raise AttributeError("Table '{}' (row type={}) has no attribute {}".format(
-                self._name, pyschema.core.get_full_name(self._schema), name))
-        return self._fields[name]
-
-    def __getitem__(self, expression):
-        if isinstance(expression, Expression):
-            return Selection(self, expression)
+        return """SELECT {fields} FROM {left._name}
+INNER JOIN {right._name}
+ON {join_condition}
+""".format(
+            fields=selected_fields,
+            left=self.left,
+            right=self.right,
+            join_condition=self.join_condition.render("sql")
+        )
 
 
 if __name__ == "__main__":
@@ -204,3 +233,7 @@ if __name__ == "__main__":
     print
     print "Pig filter:"
     print mytable[mytable.i == other.j * 2].pig()
+    print
+    print "SQL join"
+    join = InnerJoin(mytable, other, condition=mytable.i == other.j)
+    print join.sql()

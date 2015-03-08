@@ -37,27 +37,76 @@ class Multiplication(Expression):
         )
 
 
+class EqualityCheck(Expression):
+    def __init__(self, left, right):
+        super(EqualityCheck, self).__init__()
+        self.left = left
+        self.right = right
+
+    def render(self):
+        return "({}) == ({})".format(
+            self.left.render(),
+            self.right.render()
+        )
+
+
+class BooleanValued(Expression):
+    def __init__(self, proxy):
+        self.proxy = proxy
+
+    def render(self):
+        return self.proxy.render()
+
+    def __repr__(self):
+        return "BooleanValued: " + super(BooleanValued, self).__repr__()
+
+    @classmethod
+    def mixin(self, cls):
+        "Use as decorator for class to get this property"
+        class Wrapper(IntegerValued):
+            def __new__(wrappercls, *args, **kwargs):
+                return BooleanValued(cls(*args, **kwargs))
+        return Wrapper
+
+
 class IntegerValued(Expression):
     def __init__(self, proxy):
         self.proxy = proxy
 
-    def mul2(self, other, reverse):
+    def convert_compatible(self, other):
         if isinstance(other, int):
-            other = IntegerConstant(other)
+            return IntegerConstant(other)
+        elif isinstance(other, IntegerValued):
+            return other
+        assert False
+
+    def mul(self, other, reverse):
+        other = self.convert_compatible(other)
         if reverse:
             left, right = other, self
         else:
             left, right = self, other
-
-        if isinstance(other, IntegerValued):
-            return IntegerValued(Multiplication(left, right))
-        assert False
+        return IntegerValued(Multiplication(left, right))
 
     def __mul__(self, other):
-        return self.mul2(other, reverse=False)
+        return self.mul(other, reverse=False)
 
     def __rmul__(self, other):
-        return self.mul2(other, reverse=True)
+        return self.mul(other, reverse=True)
+
+    def eq(self, other, reverse):
+        other = self.convert_compatible(other)
+        if reverse:
+            left, right = other, self
+        else:
+            left, right = self, other
+        return BooleanValued(EqualityCheck(left, right))
+
+    def __eq__(self, other):
+        return self.eq(other, reverse=False)
+
+    def __req__(self, other):
+        return self.eq(other, reverse=True)
 
     def render(self):
         return self.proxy.render()
@@ -116,4 +165,4 @@ if __name__ == "__main__":
 
     mytable = symbols(Foo, "mytable")
     other = symbols(Foo, "other")
-    print 5 * mytable.i * 10 * other.i
+    print 5 * mytable.i == mytable.i

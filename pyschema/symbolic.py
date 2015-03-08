@@ -159,9 +159,16 @@ class Selection(object):
             expr=self.expression.render("sql")
         )
 
+    def pig(self):
+        return "FILTER {table._name} BY {expr}".format(
+            table=self.table,
+            expr=self.expression.render("pig")
+        )
+
 
 class Table(dict):
     def __init__(self, schema, ref_name):
+        self._schema = schema
         self._name = ref_name
         self._fields = {}
 
@@ -171,6 +178,9 @@ class Table(dict):
             self._fields[field_name] = symcls(ref_name + "." + field_name)
 
     def __getattr__(self, name):
+        if name not in self._fields:
+            raise AttributeError("Table '{}' (row type={}) has no attribute {}".format(
+                self._name, pyschema.core.get_full_name(self._schema), name))
         return self._fields[name]
 
     def __getitem__(self, expression):
@@ -180,9 +190,17 @@ class Table(dict):
 
 if __name__ == "__main__":
     class Foo(pyschema.Record):
+        _namespace = "hello"
         i = pyschema.Integer()
+        j = pyschema.Integer()
 
     mytable = Table(Foo, "mytable")
     other = Table(Foo, "other")
+    print "Traceable types:"
     print 5 * mytable.i == mytable.i
-    print mytable[mytable.i == other.i * 2].sql()
+    print
+    print "SQL select + filter"
+    print mytable[mytable.i == other.j * 2].sql()
+    print
+    print "Pig filter:"
+    print mytable[mytable.i == other.j * 2].pig()

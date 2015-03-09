@@ -16,7 +16,7 @@ from setuptools import setup
 
 setup(
     name="pyschema",
-    version="2.1.0",
+    version="2.2.2",
     description="Schema definition and serialisation library",
     author="Elias Freider",
     author_email="freider@spotify.com",

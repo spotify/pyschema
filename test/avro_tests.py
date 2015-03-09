@@ -36,16 +36,17 @@ class TextRecord2(Record):
 
 
 class TextRecord3(Record):
-    _avro_namespace_ = "blah.blah"
+    _namespace = "blah.blah"
     t = Text()
 
 
 class SomeAvroRecord(Record):
+    """SomeAvroRecord contains a lot of cool stuff"""
     a = Text()
     b = Integer()
     c = Bytes()
     d = Boolean()
-    e = Float()
+    e = Float(description="hello world!")
     f = Enum([
         "FOO", "bar"
     ])
@@ -69,12 +70,13 @@ class SomeAvroRecord(Record):
 hand_crafted_schema_dict = {
     "type": "record",
     "name": "SomeAvroRecord",
+    "doc": "SomeAvroRecord contains a lot of cool stuff",
     "fields": [
         {"name": "a", "type": ["null", "string"], "default": None},
         {"name": "b", "type": ["null", "long"], "default": None},
         {"name": "c", "type": ["null", "bytes"], "default": None},
         {"name": "d", "type": ["null", "boolean"], "default": None},
-        {"name": "e", "type": ["null", "double"], "default": None},
+        {"name": "e", "type": ["null", "double"], "default": None, "doc": "hello world!"},
         {"name": "f", "type": ["null", {
             "type": "enum",
             "name": "ENUM",
@@ -246,8 +248,8 @@ class TestAvro(BaseTest):
         self.assertTrue("bar" in new_s.j)
         self.assertEqual(new_s.j["foo"].t, "bar")
         self.assertEqual(new_s.j["bar"].t, "baz")
-        self.assertEquals(new_s.k, datetime.date(2014,4,20))
-        self.assertEquals(new_s.l, datetime.datetime(2014,4,20,12,0,0))
+        self.assertEquals(new_s.k, datetime.date(2014, 4, 20))
+        self.assertEquals(new_s.l, datetime.datetime(2014, 4, 20, 12, 0, 0))
         self.assertEquals(new_s.m, u"spotify")
         self.assertEquals(new_s.n, 1)
         self.assertEquals(new_s.o, all_bytes)
@@ -257,8 +259,7 @@ class TestAvro(BaseTest):
         self.assertEquals(new_s.s.t, u"ace")
         self.assertEquals(new_s.t.t, u"look")
         self.assertEquals(new_s.u.t, u"dog")
-        self.assertEquals(new_s.u._avro_namespace_, u"blah.blah")
-
+        self.assertEquals(new_s.u._namespace, u"blah.blah")
 
     def test_unset_list(self):
         @no_auto_store()

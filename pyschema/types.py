@@ -17,6 +17,21 @@ import core
 import copy
 from core import ParseError, Field
 import binascii
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
+
+def ordereddict_push_front(dct, key, value):
+    """Set a value at the front of an OrderedDict
+
+    The original dict isn't modified, instead a copy is returned
+    """
+    d = OrderedDict()
+    d[key] = value
+    d.update(dct)
+    return d
 
 
 class Text(Field):
@@ -71,6 +86,9 @@ class Bytes(Field):
             return self._dump_utf8_codepoints(binary_data)
         return self._dump_b64(binary_data)
 
+    def is_similar_to(self, other):
+        return super(Bytes, self).is_similar_to(other) and self.custom_encoding == other.custom_encoding
+
 
 class List(Field):
     """List of one other Field type
@@ -99,6 +117,16 @@ class List(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
+    def is_similar_to(self, other):
+        return super(List, self).is_similar_to(other) and self.field_type.is_similar_to(other.field_type)
+
+    def repr_vars(self):
+        return ordereddict_push_front(
+            super(List, self).repr_vars(),
+            "field_type",
+            repr(self.field_type)
+        )
+
 
 class Enum(Field):
     _field_type = Text()  # don't change
@@ -122,6 +150,16 @@ class Enum(Field):
                 % (parsed, tuple(self.values)))
         return parsed
 
+    def is_similar_to(self, other):
+        return super(Enum, self).is_similar_to(other) and self.values == other.values
+
+    def repr_vars(self):
+        return ordereddict_push_front(
+            super(Enum, self).repr_vars(),
+            "values",
+            self.values
+        )
+
 
 class Integer(Field):
     def __init__(self, size=8, **kwargs):
@@ -137,6 +175,9 @@ class Integer(Field):
         if not isinstance(obj, (int, long, type(None))) or isinstance(obj, bool):
             raise ParseError("%r is not a valid Integer" % (obj,))
         return obj
+
+    def is_similar_to(self, other):
+        return super(Integer, self).is_similar_to(other) and self.size == other.size
 
 
 class Boolean(Field):
@@ -170,6 +211,9 @@ class Float(Field):
         if not isinstance(obj, float):
             raise ParseError("Invalid value for Float field: %r" % obj)
         return float(obj)
+
+    def is_similar_to(self, other):
+        return super(Float, self).is_similar_to(other) and self.size == other.size
 
 
 class Date(Text):
@@ -236,6 +280,16 @@ class SubRecord(Field):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
 
+    def is_similar_to(self, other):
+        return super(SubRecord, self).is_similar_to(other) and self._schema == other._schema
+
+    def repr_vars(self):
+        return ordereddict_push_front(
+            super(SubRecord, self).repr_vars(),
+            "schema",
+            self._schema._schema_name
+        )
+
 
 class Map(Field):
     """List of one other Field type
@@ -271,3 +325,13 @@ class Map(Field):
     def default_value(self):
         #  avoid default-sharing between records
         return copy.deepcopy(self.default)
+
+    def is_similar_to(self, other):
+        return super(Map, self).is_similar_to(other) and self.value_type.is_similar_to(other.value_type)
+
+    def repr_vars(self):
+        return ordereddict_push_front(
+            super(Map, self).repr_vars(),
+            "value_type",
+            repr(self.value_type)
+        )

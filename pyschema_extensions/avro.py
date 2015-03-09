@@ -164,11 +164,7 @@ class SubRecordMixin:
 
     @property
     def avro_type_name(self):
-        if hasattr(self._schema, '_avro_namespace_'):
-            return '.'.join([self._schema._avro_namespace_,
-                             self._schema._schema_name])
-        else:
-            return self._schema._schema_name
+        return core.get_full_name(self._schema)
 
     def avro_dump(self, obj):
         if obj is None:
@@ -241,9 +237,9 @@ class SchemaGeneratorState(object):
 def get_schema_dict(record, state=None):
     state = state or SchemaGeneratorState()
 
-    if hasattr(record, '_avro_namespace_'):
-        namespace = record._avro_namespace_
-        record_name = namespace + '.' + record._schema_name
+    full_name = core.get_full_name(record)
+    if '.' in full_name:
+        namespace, record_name = full_name.rsplit('.', 1)
     else:
         namespace = None
         record_name = record._schema_name
@@ -259,6 +255,9 @@ def get_schema_dict(record, state=None):
     if namespace:
         avro_record["namespace"] = namespace
 
+    if record.__doc__ is not None:
+        avro_record["doc"] = record.__doc__
+
     avro_fields = []
     for field_name, field_type in record._fields.iteritems():
         field_spec = {
@@ -267,6 +266,8 @@ def get_schema_dict(record, state=None):
         }
         if field_type.default is not core.NO_DEFAULT:
             field_spec["default"] = field_type.avro_default_value()
+        if field_type.description is not None:
+            field_spec["doc"] = field_type.description
         avro_fields.append(field_spec)
 
     avro_record["fields"] = avro_fields

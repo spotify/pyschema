@@ -84,23 +84,40 @@ class SchemaStore(object):
 
             Can be used as a class decorator
         """
-        existing = self._schema_map.get(schema.__name__, None)
-        if existing:
-            warnings.warn(
-                "{new_module}.{class_name} replaces record from {prev_module}"
-                .format(class_name=schema.__name__,
-                        prev_module=existing.__module__,
-                        new_module=schema.__module__),
-                stacklevel=3 if _bump_stack_level else 2)
-
-        self._schema_map[schema.__name__] = schema
+        full_name = get_full_name(schema)
+        self._force_add(full_name, schema, _bump_stack_level)
+        if '.' in full_name and schema.__name__ not in self._schema_map:
+            self._force_add(schema.__name__, schema, _bump_stack_level)
         return schema
 
-    def remove_record(self, schema):
-        del self._schema_map[schema.__name__]
+    def _force_add(self, used_name, schema, _bump_stack_level=False):
+        existing = self._schema_map.get(used_name, None)
+        if existing:
+            full_name = get_full_name(schema)
+            explanation = "(actually {0})".format() if full_name != used_name else ""
+
+            warnings.warn(
+                "{used_name}{explanation}: old definition in {prev_module} replaced by definition in {new_module}"
+                .format(used_name=used_name,
+                        explanation=explanation,
+                        prev_module=existing.__module__,
+                        new_module=schema.__module__),
+                stacklevel=4 if _bump_stack_level else 3)
+        self._schema_map[used_name] = schema
 
     def get(self, record_name):
-        return self._schema_map[record_name]
+        """
+        Will return a matching record or raise KeyError is no record is found.
+
+        If the record name is a full name we will first check for a record matching the full name.
+        If no such record is found any record matching the last part of the full name (without the namespace) will
+        be returned.
+        """
+        if record_name in self._schema_map:
+            return self._schema_map[record_name]
+        else:
+            last_name = record_name.split('.')[-1]
+            return self._schema_map[last_name]
 
     def clear(self):
         self._schema_map.clear()
@@ -114,10 +131,31 @@ class SchemaStore(object):
         return schema in self._schema_map.values()
 
 
+class RecordStore(SchemaStore):
+    def __init__(self):
+        warnings.warn("RecordStore is deprecated and has been renamed to SchemaStore", DeprecationWarning, stacklevel=2)
+        super(RecordStore, self).__init__()
+
+
+def get_full_name(schema):
+    full_name = schema.__name__
+    if hasattr(schema, '_namespace'):
+        full_name = '.'.join([schema._namespace, schema.__name__])
+    elif hasattr(schema, '_avro_namespace_'):
+        warnings.warn("_avro_namespace is deprecated, use _namespace instead", DeprecationWarning, stacklevel=3)
+        full_name = '.'.join([schema._avro_namespace_, schema.__name__])
+    return full_name
+
+
+class _NoDefault:
+    def __repr__(self):
+        return "NO_DEFAULT"
+
 # NO_DEFAULT is a special value to signify that a field has no default value
 # and should fail to serialize unless a value has been assigned
 # it's the default default-value for all non-nullable fields
-NO_DEFAULT = object()
+
+NO_DEFAULT = _NoDefault()
 
 _UNTOUCHED = object()
 
@@ -141,8 +179,20 @@ class Field(object):
         self.default = default
         Field._next_index += 1  # used for arg order in initialization
 
+    def repr_vars(self):
+        """Return a dictionary the field definition
+
+        Should contain all fields that are required for the definition of this field in a pyschema class"""
+        d = OrderedDict()
+        d["nullable"] = repr(self.nullable)
+        d["default"] = repr(self.default)
+        if self.description is not None:
+            d["description"] = repr(self.description)
+        return d
+
     def __repr__(self):
-        return self.__class__.__name__
+        strings = ('{0}={1}'.format(vname, val) for vname, val in self.repr_vars().iteritems())
+        return self.__class__.__name__ + '(' + ', '.join(strings) + ')'
 
     def set_parent(self, schema):
         # no-op by default but can be overridden by types
@@ -196,6 +246,14 @@ class Field(object):
 
     def default_value(self):
         return self.default
+
+    def is_similar_to(self, other):
+        return(
+            type(self) == type(other) and
+            self.default == other.default and
+            self.nullable == other.nullable and
+            self.description == other.description
+        )
 
 auto_store = SchemaStore()
 
@@ -508,6 +566,7 @@ def loads(
 def dumps(obj, attach_schema_name=True):
     json_dct = to_json_compatible(obj)
     if attach_schema_name:
-        json_dct[SCHEMA_FIELD_NAME] = obj._schema_name
+        json_dct[SCHEMA_FIELD_NAME] = get_full_name(obj.__class__)
+
     json_string = json.dumps(json_dct)
     return json_string

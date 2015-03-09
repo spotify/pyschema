@@ -1,0 +1,9 @@
+2.2.0:
+    New:
+        * New avsc parser as replacement for messy avro_to_pyschema (now deprecated)
+        * Possible to generate python source code from a pyschema object
+        * Adds doc/description export for avro module (both schemas and fields)
+        * Adds support for schema namespaces
+    
+    Backwards compatibility:
+        * Recreates deprecated RecordStore name for SchemaStore

@@ -22,7 +22,7 @@ except ImportError:
     import json
 
 import pyschema
-from pyschema_extensions import avro_parser, avro
+from pyschema_extensions import avro_schema_parser, avro
 from . import common
 
 
@@ -61,7 +61,7 @@ class ParseThreeIncludingNullable(NoAutoRegister):
     ]
 
     def test_can_parse(self):
-        schema_class = avro_parser.parse_schema_string(self.avsc)
+        schema_class = avro_schema_parser.parse_schema_string(self.avsc)
         self.assertTrue(pyschema.ispyschema(schema_class))
         self.assertEqual(schema_class._schema_name, self.schema_name)
 
@@ -70,7 +70,7 @@ class ParseThreeIncludingNullable(NoAutoRegister):
             self.assertTrue(gen_type.is_similar_to(ref_type), "Types for field {0!r} don't match".format(ref_name))
 
     def test_roundtrip(self):
-        schema_class = avro_parser.parse_schema_string(self.avsc)
+        schema_class = avro_schema_parser.parse_schema_string(self.avsc)
         schema_struct = json.loads(self.avsc)
         regenerated_struct = avro.get_schema_dict(schema_class)
         self.assertEqual(schema_struct, regenerated_struct)
@@ -116,7 +116,7 @@ class ParseMaps(ParseThreeIncludingNullable):
 
 class ParseEnum(TestCase):
     def test_can_parse_field(self):
-        field = avro_parser._parse_complex(
+        field = avro_schema_parser._parse_complex(
             {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsNotSupportedYet'}
         )()
         self.assertTrue(
@@ -139,7 +139,7 @@ class RetainDocs(NoAutoRegister):
     """
 
     def test_doc_intact(self):
-        schema = avro_parser.parse_schema_string(self.avsc)
+        schema = avro_schema_parser.parse_schema_string(self.avsc)
         self.assertEqual(schema.__doc__, u"hello world\nfoo")
         self.assertEqual(schema.a.description, u"this is a field")
 
@@ -212,10 +212,10 @@ class BigRecord(NoAutoRegister, common.BaseTest):
     """
 
     def test_parse(self):
-        avro_parser.parse_schema_string(self.avsc)
+        avro_schema_parser.parse_schema_string(self.avsc)
 
     def test_two_way_equivalence(self):
-        schema_class = avro_parser.parse_schema_string(self.avsc)
+        schema_class = avro_schema_parser.parse_schema_string(self.avsc)
         recreated_avsc = avro.get_schema_dict(schema_class)
         self.recursive_compare(json.loads(self.avsc), recreated_avsc)
 
@@ -423,17 +423,17 @@ class TestAvroToPySchema(NoAutoRegister, common.BaseTest):
             )
 
     def test_supported_avro_schema_succeeds(self):
-        parsed = avro_parser.parse_schema_string(supported_avro_schema)
+        parsed = avro_schema_parser.parse_schema_string(supported_avro_schema)
         self.schemas_match(parsed, Supported)
 
     def test_unsupported_avro_schema_fails(self):
         self.assertRaises(
-            avro_parser.AVSCParseException,
-            avro_parser.parse_schema_string,
+            avro_schema_parser.AVSCParseException,
+            avro_schema_parser.parse_schema_string,
             unsupported_avro_schema
         )
 
     def test_two_way_equivalence(self):
-        schema_class = avro_parser.parse_schema_string(supported_avro_schema)
+        schema_class = avro_schema_parser.parse_schema_string(supported_avro_schema)
         recreated_avsc = avro.get_schema_dict(schema_class)
         self.recursive_compare(json.loads(supported_avro_schema), recreated_avsc)

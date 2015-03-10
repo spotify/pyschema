@@ -1,5 +1,5 @@
 import pyschema
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class Expression(object):
@@ -24,17 +24,38 @@ class Symbol(Expression):
         return self.name
 
 
-class Multiplication(Expression):
+class StandardMathArithmeticBinaryOperation(object):
+    @abstractproperty
+    def operator(self):
+        pass
+
     def __init__(self, left, right):
-        super(Multiplication, self).__init__()
+        super(StandardMathArithmeticBinaryOperation, self).__init__()
         self.left = left
         self.right = right
 
     def render(self, syntax):
-        return "({}) * ({})".format(
-            self.left.render(syntax),
-            self.right.render(syntax)
+        return "({left}) {operator} ({right})".format(
+            left=self.left.render(syntax),
+            right=self.right.render(syntax),
+            operator=self.operator
         )
+
+
+class Multiplication(StandardMathArithmeticBinaryOperation):
+    operator = "*"
+
+
+class Addition(StandardMathArithmeticBinaryOperation):
+    operator = "+"
+
+
+class Subtraction(StandardMathArithmeticBinaryOperation):
+    operator = "-"
+
+
+class Division(StandardMathArithmeticBinaryOperation):
+    operator = "/"
 
 
 class EqualityCheck(Expression):
@@ -85,13 +106,16 @@ class IntegerValued(Expression):
             return other
         assert False
 
-    def mul(self, other, reverse):
-        other = self.convert_compatible(other)
+    def binary_operation(self, operator_class, other, reverse):
         if reverse:
             left, right = other, self
         else:
             left, right = self, other
-        return IntegerValued(Multiplication(left, right))
+        return operator_class(left, right)
+
+    def mul(self, other, reverse):
+        other = self.convert_compatible(other)
+        return IntegerValued(self.binary_operation(Multiplication, other, reverse))
 
     def __mul__(self, other):
         return self.mul(other, reverse=False)
@@ -99,13 +123,39 @@ class IntegerValued(Expression):
     def __rmul__(self, other):
         return self.mul(other, reverse=True)
 
+    def add(self, other, reverse):
+        other = self.convert_compatible(other)
+        return IntegerValued(self.binary_operation(Addition, other, reverse))
+
+    def __add__(self, other):
+        return self.add(other, reverse=False)
+
+    def __radd__(self, other):
+        return self.add(other, reverse=True)
+
+    def div(self, other, reverse):
+        other = self.convert_compatible(other)
+        return IntegerValued(self.binary_operation(Division, other, reverse))
+
+    def __div__(self, other):
+        return self.div(other, reverse=False)
+
+    def __rdiv__(self, other):
+        return self.div(other, reverse=True)
+
+    def sub(self, other, reverse):
+        other = self.convert_compatible(other)
+        return IntegerValued(self.binary_operation(Subtraction, other, reverse))
+
+    def __sub__(self, other):
+        return self.sub(other, reverse=False)
+
+    def __rsub__(self, other):
+        return self.sub(other, reverse=True)
+
     def eq(self, other, reverse):
         other = self.convert_compatible(other)
-        if reverse:
-            left, right = other, self
-        else:
-            left, right = self, other
-        return BooleanValued(EqualityCheck(left, right))
+        return BooleanValued(self.binary_operation(EqualityCheck, other, reverse))
 
     def __eq__(self, other):
         return self.eq(other, reverse=False)
@@ -226,7 +276,7 @@ if __name__ == "__main__":
     mytable = Table(Foo, "mytable")
     other = Table(Foo, "other")
     print "Traceable types:"
-    print 5 * mytable.i == mytable.i
+    print 5 * mytable.i - 1 == (mytable.i + 5 * 2) / 2
     print
     print "SQL select + filter"
     print mytable[mytable.i == other.j * 2].sql()

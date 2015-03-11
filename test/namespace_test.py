@@ -105,6 +105,20 @@ class NamespaceTest(unittest.TestCase):
 
         self.assertEquals(store.get('legacy.TestRecord'), TestRecord)
 
+    def test_duplicated_schema(self):
+        # This is a duplication of test.namespaced_schemas.TestRecord
+        # This should fail since we want to ensure that namespaced data is consistent in what classes we use
+        @no_auto_store()
+        class TestRecord(Record):
+            _namespace = "my.namespace"
+            a = Text()
+
+        store = SchemaStore()
+
+        store.add_record(TestRecord)
+        store.add_record(namespaced_schemas.TestRecord)
+        data = pyschema.core.dumps(TestRecord(a='testing'))
+        self.assertRaises(ValueError,  pyschema.core.loads, data, store)
 
 if __name__ == '__main__':
     unittest.main()

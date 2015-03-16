@@ -187,14 +187,58 @@ class IntegerConstant(Expression):
         return str(self.value)
 
 
-# convenience wrappers
 @IntegerValued.mixin
 class IntegerSymbol(Symbol):
     pass
 
 
+class TextHasPrefixOperand(object):
+    def __init__(self, operand, prefix):
+        self.operand = operand
+        self.prefix = prefix
+
+    def render(self, syntax):
+        if syntax == "sql":
+            return "{operand} LIKE ({prefix} || '%')".format(
+                operand=self.operand.render(syntax),
+                prefix=self.prefix.render(syntax)
+            )
+        assert False
+
+
+class TextValued(object):
+    def convert_compatible(self, other):
+        if isinstance(other, unicode):
+            return TextConstant(other)
+        elif isinstance(other, TextValued):
+            return other
+        assert False
+
+    def __repr__(self):
+        return "TextValued: " + super(TextValued, self).__repr__()
+
+    def startswith(self, prefix):
+        prefix = self.convert_compatible(prefix)
+        return BooleanValued(TextHasPrefixOperand(self, prefix))
+
+
+class TextConstant(TextValued, Expression):
+    def __init__(self, value):
+        self.value = value
+
+    def render(self, syntax):
+        if syntax == "sql":
+            # FIXME: quote special chars
+            return "'{0}'".format(self.value)
+
+
+class TextSymbol(TextValued, Symbol):
+    pass
+
+
 SYMBOLMAP = {
-    pyschema.Integer: IntegerSymbol
+    pyschema.Integer: IntegerSymbol,
+    pyschema.Text: TextSymbol
 }
 
 
@@ -272,6 +316,7 @@ if __name__ == "__main__":
         _namespace = "hello"
         i = pyschema.Integer()
         j = pyschema.Integer()
+        text_field = pyschema.Text()
 
     mytable = Table(Foo, "mytable")
     other = Table(Foo, "other")
@@ -287,3 +332,5 @@ if __name__ == "__main__":
     print "SQL join"
     join = InnerJoin(mytable, other, condition=mytable.i == other.j)
     print join.sql()
+
+    print mytable.text_field.startswith(u"foo").render('sql')

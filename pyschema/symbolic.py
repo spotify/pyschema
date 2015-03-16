@@ -76,35 +76,42 @@ class EqualityCheck(Expression):
         )
 
 
-class BooleanValued(Expression):
-    def __init__(self, proxy):
-        self.proxy = proxy
-
-    def render(self, syntax):
-        return self.proxy.render(syntax)
-
+class BooleanValued(object):
     def __repr__(self):
         return "BooleanValued: " + super(BooleanValued, self).__repr__()
 
-    @classmethod
-    def mixin(self, cls):
-        "Use as decorator for class to get this property"
-        class Wrapper(IntegerValued):
-            def __new__(wrappercls, *args, **kwargs):
-                return BooleanValued(cls(*args, **kwargs))
-        return Wrapper
+
+class BooleanExpressionWrapper(BooleanValued, Expression):
+    def __init__(self, obj):
+        self.obj = obj
+
+    def render(self, syntax):
+        return self.obj.render(syntax)
 
 
-class IntegerValued(Expression):
-    def __init__(self, proxy):
-        self.proxy = proxy
+class BooleanConstant(BooleanValued, Expression):
+    def __init__(self, value):
+        self.value = value
 
+    def render(self, syntax):
+        if syntax == "sql":
+            # FIXME: quote special chars
+            return str(self.value).upper()
+
+        if syntax == "default":
+            return str(self.value)
+
+        raise NotImplementedError(syntax)
+
+
+class IntegerValued(object):
+    """Mixin for integer operations and type checking"""
     def convert_compatible(self, other):
         if isinstance(other, int):
             return IntegerConstant(other)
         elif isinstance(other, IntegerValued):
             return other
-        assert False
+        raise NotImplementedError(other)
 
     def binary_operation(self, operator_class, other, reverse):
         if reverse:
@@ -115,7 +122,7 @@ class IntegerValued(Expression):
 
     def mul(self, other, reverse):
         other = self.convert_compatible(other)
-        return IntegerValued(self.binary_operation(Multiplication, other, reverse))
+        return IntegerExpressionWrapper(self.binary_operation(Multiplication, other, reverse))
 
     def __mul__(self, other):
         return self.mul(other, reverse=False)
@@ -125,7 +132,7 @@ class IntegerValued(Expression):
 
     def add(self, other, reverse):
         other = self.convert_compatible(other)
-        return IntegerValued(self.binary_operation(Addition, other, reverse))
+        return IntegerExpressionWrapper(self.binary_operation(Addition, other, reverse))
 
     def __add__(self, other):
         return self.add(other, reverse=False)
@@ -135,7 +142,7 @@ class IntegerValued(Expression):
 
     def div(self, other, reverse):
         other = self.convert_compatible(other)
-        return IntegerValued(self.binary_operation(Division, other, reverse))
+        return IntegerExpressionWrapper(self.binary_operation(Division, other, reverse))
 
     def __div__(self, other):
         return self.div(other, reverse=False)
@@ -145,7 +152,7 @@ class IntegerValued(Expression):
 
     def sub(self, other, reverse):
         other = self.convert_compatible(other)
-        return IntegerValued(self.binary_operation(Subtraction, other, reverse))
+        return IntegerExpressionWrapper(self.binary_operation(Subtraction, other, reverse))
 
     def __sub__(self, other):
         return self.sub(other, reverse=False)
@@ -155,7 +162,7 @@ class IntegerValued(Expression):
 
     def eq(self, other, reverse):
         other = self.convert_compatible(other)
-        return BooleanValued(self.binary_operation(EqualityCheck, other, reverse))
+        return BooleanExpressionWrapper(self.binary_operation(EqualityCheck, other, reverse))
 
     def __eq__(self, other):
         return self.eq(other, reverse=False)
@@ -163,23 +170,21 @@ class IntegerValued(Expression):
     def __req__(self, other):
         return self.eq(other, reverse=True)
 
-    def render(self, syntax):
-        return self.proxy.render(syntax)
-
     def __repr__(self):
         return "IntegerValued: " + super(IntegerValued, self).__repr__()
 
-    @classmethod
-    def mixin(self, cls):
-        "Use as decorator for class to get this property"
-        class Wrapper(IntegerValued):
-            def __new__(wrappercls, *args, **kwargs):
-                return IntegerValued(cls(*args, **kwargs))
-        return Wrapper
+
+class IntegerExpressionWrapper(IntegerValued, Expression):
+    "Gives an expression integer operations"
+    def __init__(self, expr):
+        self.expr = expr
+
+    def render(self, syntax):
+        return self.expr.render(syntax)
 
 
-@IntegerValued.mixin
-class IntegerConstant(Expression):
+class IntegerConstant(IntegerValued, Expression):
+    "Wraps a python int as a symbolic constant object"
     def __init__(self, value):
         self.value = value
 
@@ -187,9 +192,8 @@ class IntegerConstant(Expression):
         return str(self.value)
 
 
-@IntegerValued.mixin
-class IntegerSymbol(Symbol):
-    pass
+class IntegerSymbol(IntegerValued, Symbol):
+    "Symbol with integer operations"
 
 
 class TextHasPrefixOperand(object):
@@ -203,7 +207,12 @@ class TextHasPrefixOperand(object):
                 operand=self.operand.render(syntax),
                 prefix=self.prefix.render(syntax)
             )
-        assert False
+        if syntax == "default":
+            return "{0}.startswith({1})".format(
+                self.operand.render(syntax),
+                self.prefix.render(syntax)
+            )
+        raise NotImplementedError(syntax)
 
 
 class TextValued(object):
@@ -212,14 +221,14 @@ class TextValued(object):
             return TextConstant(other)
         elif isinstance(other, TextValued):
             return other
-        assert False
+        raise NotImplementedError(other)
 
     def __repr__(self):
         return "TextValued: " + super(TextValued, self).__repr__()
 
     def startswith(self, prefix):
         prefix = self.convert_compatible(prefix)
-        return BooleanValued(TextHasPrefixOperand(self, prefix))
+        return BooleanExpressionWrapper(TextHasPrefixOperand(self, prefix))
 
 
 class TextConstant(TextValued, Expression):
@@ -230,6 +239,10 @@ class TextConstant(TextValued, Expression):
         if syntax == "sql":
             # FIXME: quote special chars
             return "'{0}'".format(self.value)
+        if syntax == "default":
+            return repr(self.value)
+
+        raise NotImplementedError(syntax)
 
 
 class TextSymbol(TextValued, Symbol):
@@ -333,4 +346,4 @@ if __name__ == "__main__":
     join = InnerJoin(mytable, other, condition=mytable.i == other.j)
     print join.sql()
 
-    print mytable.text_field.startswith(u"foo").render('sql')
+    print repr(mytable.text_field.startswith(u"foo"))

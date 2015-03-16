@@ -7,4 +7,5 @@ warnings.warn(
     stacklevel=2
 )
 
+import pyschema_extensions.postgres
 from pyschema_extensions.postgres import *

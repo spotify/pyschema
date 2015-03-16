@@ -7,4 +7,5 @@ warnings.warn(
     stacklevel=2
 )
 
+import pyschema_extensions.luigi
 from pyschema_extensions.luigi import *

@@ -7,4 +7,5 @@ warnings.warn(
     stacklevel=2
 )
 
+import pyschema_extensions.jsonschema
 from pyschema_extensions.jsonschema import *

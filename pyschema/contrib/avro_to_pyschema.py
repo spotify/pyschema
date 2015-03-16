@@ -7,4 +7,5 @@ warnings.warn(
     stacklevel=2
 )
 
+import pyschema_extensions.avro_to_pyschema
 from pyschema_extensions.avro_to_pyschema import *

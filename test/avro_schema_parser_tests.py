@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import
 from unittest import TestCase
+from pyschema_extensions.avro_schema_parser import AVSCParseException
 
 try:
     import simplejson as json
@@ -116,7 +117,7 @@ class ParseMaps(ParseThreeIncludingNullable):
 
 class ParseEnum(TestCase):
     def test_can_parse_field(self):
-        field = avro_schema_parser._parse_complex(
+        field = avro_schema_parser.AvroSchemaParser()._parse_complex(
             {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsNotSupportedYet'}
         )()
         self.assertTrue(
@@ -437,3 +438,60 @@ class TestAvroToPySchema(NoAutoRegister, common.BaseTest):
         schema_class = avro_schema_parser.parse_schema_string(supported_avro_schema)
         recreated_avsc = avro.get_schema_dict(schema_class)
         self.recursive_compare(json.loads(supported_avro_schema), recreated_avsc)
+
+
+repeated_subrecord_schema = r"""{
+  "type" : "record",
+  "name" : "ParentRecord",
+  "namespace" : "pyschema.test",
+  "fields" : [ {
+    "name" : "sub_record",
+    "type" : {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "RepeatedSubRecord",
+        "fields" : [ {
+          "name" : "file_id",
+          "type" : [ "null", "bytes" ],
+          "default" : null
+        } ]
+      }
+    },
+    "default" : [ ]
+  }, {
+    "name" : "sub_record_repeat",
+    "type" : {
+      "type" : "array",
+      "items" : "RepeatedSubRecord"
+    },
+    "default" : [ ],
+    "items" : "RepeatedSubRecord"
+  }]
+}
+"""
+
+unreferenced_subrecord_schema = r"""{
+  "type" : "record",
+  "name" : "ParentRecord",
+  "namespace" : "pyschema.test",
+  "fields" : [ {
+    "name" : "sub_record_repeat",
+    "type" : {
+      "type" : "array",
+      "items" : "RepeatedSubRecord"
+    },
+    "default" : [ ],
+    "items" : "RepeatedSubRecord"
+  }]
+}
+"""
+
+class TestAvroRepeatedSubRecord(TestCase):
+    def test_repeated_subrecord(self):
+        record = avro_schema_parser.parse_schema_string(repeated_subrecord_schema)
+
+    def test_unreferenced_subrecord_schema(self):
+        self.assertRaises(AVSCParseException,
+                          avro_schema_parser.parse_schema_string,
+                          unreferenced_subrecord_schema)

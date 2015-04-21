@@ -344,3 +344,31 @@ class TestExtraFields(TestCase):
         line = '{"field": {"long": 8}, "invalid_field": {"long": 8}}'
 
         self.assertRaises(ParseError, lambda: pyschema_extensions.avro.loads(line, schema=ValidRecord))
+
+
+class TestNamespaceMigration(TestCase):
+    def test_old_data(self):
+        """
+        Test that we are able to read data created without namespace after namespace is added.
+        """
+        test_store = pyschema.core.SchemaStore()
+
+        @test_store.add_record
+        @no_auto_store()
+        class NamespacedSubRecord(Record):
+            _namespace = 'pyschema'
+            a = Text()
+
+        @test_store.add_record
+        @no_auto_store()
+        class NamespacedMainRecord(Record):
+            _namespace = 'pyschema'
+            sub_record = SubRecord(NamespacedSubRecord)
+
+        # This data does not have a subrecord but we should be able to parse it anyways
+        legacy_data = '{"sub_record": {"NamespacedSubRecord": {"a": {"string": "test"}}}}'
+        pyschema_extensions.avro.loads(legacy_data, schema=NamespacedMainRecord)
+
+        legacy_data_with_record_class = ('{"$schema": "NamespacedMainRecord", "sub_record":'
+                                         '{"NamespacedSubRecord": {"a": {"string": "test"}}}}')
+        pyschema_extensions.avro.loads(legacy_data_with_record_class, record_store=test_store)

@@ -174,13 +174,26 @@ class SubRecordMixin:
         else:
             return to_json_compatible(obj)
 
+    def _get_record_data(self, obj):
+        """
+        Try to get the data for this subrecord using the full_name including namespace.
+        If no data is given for the fullname, we will fallback to use the SubRecord name without namespace.
+
+        Doing this allows namespace addition to a schema while being able to read legacy data missing a namespace.
+        """
+        if self.avro_type_name in obj:
+            return obj[self.avro_type_name]
+        else:
+            base_name = self.avro_type_name.split('.')[-1]
+            return obj[base_name]
+
     def avro_load(self, obj):
         if obj is None:
             return None
         if self.nullable:
             return from_json_compatible(
                 self._schema,
-                obj[self.avro_type_name]
+                self._get_record_data(obj)
             )
         else:
             return from_json_compatible(

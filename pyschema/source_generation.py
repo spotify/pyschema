@@ -31,8 +31,8 @@ def header_source():
     """Get the required header for generated source"""
     return (
         "import pyschema\n"
-        "from pyschema.types import *"
-        "\n"
+        "from pyschema.types import *\n"
+        "from pyschema.core import NO_DEFAULT\n"
     )
 
 

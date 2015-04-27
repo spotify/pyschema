@@ -118,7 +118,8 @@ class ParseMaps(ParseThreeIncludingNullable):
 class ParseEnum(TestCase):
     def test_can_parse_field(self):
         field = avro_schema_parser.AvroSchemaParser()._parse_complex(
-            {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsNotSupportedYet'}
+            {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsNotSupportedYet'},
+            None
         )()
         self.assertTrue(
             field.is_similar_to(
@@ -487,11 +488,47 @@ unreferenced_subrecord_schema = r"""{
 }
 """
 
+
 class TestAvroRepeatedSubRecord(TestCase):
     def test_repeated_subrecord(self):
-        record = avro_schema_parser.parse_schema_string(repeated_subrecord_schema)
+        avro_schema_parser.parse_schema_string(repeated_subrecord_schema)
 
     def test_unreferenced_subrecord_schema(self):
         self.assertRaises(AVSCParseException,
                           avro_schema_parser.parse_schema_string,
                           unreferenced_subrecord_schema)
+
+
+namespace_subrecord_schema = r"""{
+  "type" : "record",
+  "name" : "SubNamespaceTestRecord",
+  "namespace" : "topspace",
+  "fields" : [
+    {
+      "name" : "sub_record_no_namespace",
+      "type" : {
+          "type" : "record",
+          "name" : "SubRecordNoNamespace",
+          "fields" : []
+      }
+    },
+    {
+      "name" : "sub_record_with_namespace",
+      "type" : {
+          "type" : "record",
+          "name" : "SubRecordWithNamespace",
+          "namespace": "subspace",
+          "fields" : []
+      }
+    }
+  ]
+}
+"""
+
+
+class TestAvroSubrecordNamespaceInheritance(TestCase):
+    def test_namepace_inheritance(self):
+        schema = avro_schema_parser.parse_schema_string(namespace_subrecord_schema)
+        self.assertEqual(schema._namespace, "topspace")
+        self.assertEqual(schema.sub_record_no_namespace._schema._namespace, "topspace")
+        self.assertEqual(schema.sub_record_with_namespace._schema._namespace, "subspace")

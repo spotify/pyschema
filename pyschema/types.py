@@ -179,6 +179,13 @@ class Integer(Field):
     def is_similar_to(self, other):
         return super(Integer, self).is_similar_to(other) and self.size == other.size
 
+    def repr_vars(self):
+        return ordereddict_push_front(
+            super(Integer, self).repr_vars(),
+            "size",
+            self.size
+        )
+
 
 class Boolean(Field):
     VALUE_MAP = {True: '1', 1: '1',

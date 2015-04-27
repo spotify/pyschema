@@ -116,14 +116,27 @@ class AvroSchemaParser(object):
         )
 
     def _parse_subrecord(self, type_def_struct):
-        if "fields" in type_def_struct:
+        if isinstance(type_def_struct, dict):
+            if "fields" not in type_def_struct:
+                raise AVSCParseException((
+                    "No 'fields' definition found in subrecord"
+                    " declaration: {0!r}"
+                ).format(type_def_struct))
             schema_class = self.parse_schema_struct(type_def_struct)
             self.schema_store.add_record(schema_class)
         else:
+            if not isinstance(type_def_struct, basestring):
+                raise AVSCParseException((
+                    "Subrecord types need to be either declarations or a "
+                    "string referring to another schema, got: {0!r}"
+                ).format(type_def_struct))
             try:
                 schema_class = self.schema_store.get(type_def_struct)
             except KeyError:
-                raise AVSCParseException("No schema class was provided for parsing: %s" % type_def_struct)
+                raise AVSCParseException((
+                    "A schema type '{0!r}' was referenced"
+                    " without prior declaration."
+                ).format(type_def_struct))
 
         return partial(
             pyschema.SubRecord,

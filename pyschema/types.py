@@ -215,7 +215,7 @@ class Float(Field):
         return float(obj)
 
     def load(self, obj):
-        if not isinstance(obj, float):
+        if not isinstance(obj, (float, int, long)):
             raise ParseError("Invalid value for Float field: %r" % obj)
         return float(obj)
 

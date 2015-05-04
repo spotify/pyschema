@@ -532,3 +532,34 @@ class TestAvroSubrecordNamespaceInheritance(TestCase):
         self.assertEqual(schema._namespace, "topspace")
         self.assertEqual(schema.sub_record_no_namespace._schema._namespace, "topspace")
         self.assertEqual(schema.sub_record_with_namespace._schema._namespace, "subspace")
+
+
+default_valued_schema = """{
+  "type" : "record",
+  "name" : "DefaultStuff",
+  "fields" : [ {
+    "name" : "foo",
+    "type" : "string",
+    "default" : "none"
+  }, {
+    "name" : "bar",
+    "type" : "int",
+    "default" : 0
+  },
+    {
+    "name" : "floatie",
+    "type" : "float",
+    "doc" : "default here looks like an int but should apparently work",
+    "default" : 1
+  }
+  ]
+}"""
+
+
+class TestAvroDefaultValues(TestCase):
+    def test_can_decode_defaults(self):
+        schema = avro_schema_parser.parse_schema_string(default_valued_schema)
+        self.assertEqual(schema.foo.default, u"none")
+        self.assertEqual(schema.bar.default, 0)
+        self.assertTrue(isinstance(schema.floatie.default, float))
+        self.assertTrue(isinstance(schema.bar.default, int))

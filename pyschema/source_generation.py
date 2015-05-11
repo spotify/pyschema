@@ -1,6 +1,8 @@
 import copy
 from pyschema import types
 import pyschema
+import os
+from collections import defaultdict
 
 DEFAULT_INDENT = " " * 4
 
@@ -20,6 +22,36 @@ def to_python_source(classes, indent=DEFAULT_INDENT):
     * SELF-references
     """
     return header_source() + "\n" + classes_source(classes, indent)
+
+
+def to_python_package(classes, target_folder, indent=DEFAULT_INDENT):
+    default_namespace = '__init__'
+    class_graph = CachedGraphTraverser()
+
+    all_classes = set(classes)
+    for c in classes:
+        referenced_schemas = class_graph.find_descendents(c)
+        all_classes |= set(referenced_schemas)
+
+    namespace_cluster = defaultdict(set)
+    for c in all_classes:
+        try:
+            namespace = c._namespace
+        except AttributeError:
+            namespace = default_namespace
+        namespace_cluster[namespace].add(c)
+
+    print namespace_cluster
+
+    for namespace, classes in namespace_cluster.iteritems():
+        key = namespace.split('.')
+        output_file = os.path.join(target_folder, *key) + '.py'
+        output_dir = os.path.join(target_folder, os.path.dirname(output_file))
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        with open(output_file, 'w') as out_fn:
+            out_fn.write(to_python_source(list(classes)))
+            #TODO, need to make sure we don't parse references here, need to call a simpler version
 
 
 def classes_source(classes, indent=DEFAULT_INDENT):

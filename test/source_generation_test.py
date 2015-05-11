@@ -155,21 +155,21 @@ class TestSelfReference(TestCase):
 
 
 @no_auto_store()
-class ChildWithNameSpace(Record):
+class ChildWithOwnNameSpace(Record):
     _namespace = "test.pyschema_test_child"
     a = Integer()
 
 
 @no_auto_store()
-class ChildWithoutNamespace(Record):
-    pass
+class ChildWithSameNamespace(Record):
+    _namespace = "pyschema_test_parent"
 
 
 @no_auto_store()
 class ParentWithNameSpace(Record):
     _namespace = "pyschema_test_parent"
-    child = SubRecord(ChildWithNameSpace)
-    other = SubRecord(ChildWithoutNamespace)
+    child = SubRecord(ChildWithOwnNameSpace)
+    other = SubRecord(ChildWithSameNamespace)
 
 
 class TestPythonPackageGeneration(TestCase):

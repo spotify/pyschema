@@ -61,6 +61,8 @@ class PackageBuilder(object):
             out_fn.write(module_code)
 
     def format_imports(self, imported_classes):
+        if not imported_classes:
+            return "\n"
         imported_namespaces = self.get_namespace_clusters(imported_classes)
         lines = []
         for namespace, schemas in imported_namespaces.iteritems():

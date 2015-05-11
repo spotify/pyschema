@@ -96,6 +96,7 @@ class AvroSchemaParser(object):
             field_dct["__doc__"] = schema_struct["doc"]
 
         schema = pyschema.core.PySchema(record_name.encode("ascii"), (pyschema.core.Record,), field_dct)
+        self.schema_store.add_record(schema)
         return schema
 
     def _get_field_builder(self, type_def_struct, enclosing_namespace):
@@ -143,7 +144,6 @@ class AvroSchemaParser(object):
                     " declaration: {0!r}"
                 ).format(type_def_struct))
             schema_class = self.parse_schema_struct(type_def_struct, enclosing_namespace)
-            self.schema_store.add_record(schema_class)
         else:
             if not isinstance(type_def_struct, basestring):
                 raise AVSCParseException((

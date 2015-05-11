@@ -1,7 +1,12 @@
+import copy
 from pyschema import types
 import pyschema
 
 DEFAULT_INDENT = " " * 4
+
+
+class SourceGenerationError(Exception):
+    pass
 
 
 def to_python_source(classes, indent=DEFAULT_INDENT):
@@ -19,11 +24,12 @@ def to_python_source(classes, indent=DEFAULT_INDENT):
 
 def classes_source(classes, indent=DEFAULT_INDENT):
     all_classes = set(classes)
+    class_graph = CachedGraphTraverser()
     for c in classes:
-        referenced_schemas = find_subrecords(c)
+        referenced_schemas = class_graph.find_descendents(c)
         all_classes |= set(referenced_schemas)
 
-    ordered = sorted(all_classes, cmp=ref_comparator)
+    ordered = class_graph.get_reference_ordered_schemas(all_classes)
     return "\n\n".join([_class_source(c, indent) for c in ordered])
 
 
@@ -70,54 +76,50 @@ def _class_source(schema, indent):
     )
 
 
-def ref_comparator(a, b):
-    """Comparator used to sort pyschema classes in referential order
+class CachedGraphTraverser(object):
+    def __init__(self):
+        self.descendents = {}
+        self.started = set()
 
-    i.e. if schema A references schema B in a subrecord, it needs to be
-    defined first of the two
-    """
+    def find_descendents(self, a):
+        if a in self.descendents:
+            # fetch from cache
+            return self.descendents[a]
+        self.started.add(a)
+        subs = set()
+        if pyschema.ispyschema(a):
+            for _, field in a._fields.iteritems():
+                subs |= self.find_descendents(field)
+            self.descendents[a] = subs
+        elif isinstance(a, types.List):
+            subs |= self.find_descendents(a.field_type)
+        elif isinstance(a, types.Map):
+            subs |= self.find_descendents(a.value_type)
+        elif isinstance(a, types.SubRecord):
+            subs.add(a._schema)
+            if a not in self.started:  # otherwise there is a circular reference
+                subs |= self.find_descendents(a._schema)
+        self.started.remove(a)
+        return subs
 
-    if has_directed_link(a, b):
-        # a refers to b, so it should come after b in the sort order
-        return 1
-    elif has_directed_link(b, a):
-        return -1
-    else:
-        return 0
+    def get_reference_ordered_schemas(self, schema_set):
+        for schema in schema_set:
+            self.find_descendents(schema)
+        descendents = copy.deepcopy(self.descendents)  # a working copy
 
-
-def find_subrecords(a, include_this=False):
-    subs = set()
-    if pyschema.ispyschema(a):
-        if include_this:
-            subs.add(a)
-        for _, field in a._fields.iteritems():
-            subs |= find_subrecords(field, True)
-    elif isinstance(a, types.List):
-        subs |= find_subrecords(a.field_type, True)
-    elif isinstance(a, types.Map):
-        subs |= find_subrecords(a.value_type, True)
-    elif isinstance(a, types.SubRecord):
-        subs |= find_subrecords(a._schema, True)
-    return subs
-
-
-def has_directed_link(a, b):
-    # TODO: refactor to use find_subrecords instead
-    #       to reduce duplication
-    if pyschema.ispyschema(a):
-        if a == b:
-            return True
-        for _, field in a._fields.iteritems():
-            if has_directed_link(field, b):
-                return True
-    elif isinstance(a, types.List):
-        if has_directed_link(a.field_type, b):
-            return True
-    elif isinstance(a, types.Map):
-        if has_directed_link(a.value_type, b):
-            return True
-    elif isinstance(a, types.SubRecord):
-        if has_directed_link(a._schema, b):
-            return True
-    return False
+        ordered_output = []
+        while descendents:
+            leaves = []
+            for root, referenced in descendents.iteritems():
+                if len(referenced) == 0:
+                    leaves.append(root)
+            if not leaves:
+                raise SourceGenerationError("Circular reference in input schemas, aborting")
+            ordered_output += leaves
+            for leaf in leaves:
+                # remove all leaves
+                descendents.pop(leaf)
+                for root, referenced in descendents.iteritems():
+                    if leaf in referenced:
+                        referenced.remove(leaf)
+        return ordered_output

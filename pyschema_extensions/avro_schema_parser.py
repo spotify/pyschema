@@ -19,6 +19,7 @@ except ImportError:
     import json
 
 import sys
+import codecs
 from functools import partial
 import pyschema
 
@@ -46,7 +47,10 @@ def parse_schema_string(schema_string):
     """
     Load and return a PySchema class from an avsc string
     """
+    if isinstance(schema_string, str):
+        schema_string = schema_string.decode("utf8")
     schema_struct = json.loads(schema_string)
+
     return AvroSchemaParser().parse_schema_struct(schema_struct)
 
 
@@ -202,4 +206,7 @@ def to_python_source(s):
     return source_generation.to_python_source([schema])
 
 if __name__ == "__main__":
-    print to_python_source(sys.stdin.read())
+    utf8_stdin = codecs.getreader("utf8")(sys.stdin)
+    schema_struct = json.load(utf8_stdin)
+    schema = AvroSchemaParser().parse_schema_struct(schema_struct)
+    print source_generation.to_python_source([schema])

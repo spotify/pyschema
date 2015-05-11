@@ -16,7 +16,8 @@ import sys
 import subprocess
 from unittest import TestCase
 from pyschema import Record, Text, Integer, no_auto_store, Enum, SubRecord
-from pyschema.source_generation import to_python_source, classes_source, has_directed_link
+from pyschema.source_generation import to_python_source, classes_source, SourceGenerationError
+from pyschema.types import SELF
 from . import source_generation_helpers
 
 
@@ -91,18 +92,6 @@ class TestEnumRecord(AutoTest, TestCase):
     schema_classes = [EnumRecord]
 
 
-class TestDirectedLink(TestCase):
-    def test_a_to_b(self):
-        self.assertTrue(
-           has_directed_link(source_generation_helpers.A, source_generation_helpers.B)
-        )
-
-    def test_b_to_a(self):
-        self.assertFalse(
-           has_directed_link(source_generation_helpers.B, source_generation_helpers.A)
-        )
-
-
 class DependentRecords(AutoTest, TestCase):
     schema_classes = [source_generation_helpers.A, source_generation_helpers.B]
 
@@ -142,3 +131,14 @@ class Parent(pyschema.Record):
             self.correct,
             msg="Incorrect definition:\n\"\"\"\n{0}\"\"\"\nShould have been:\n\"\"\"\n{1}\"\"\"".format(src, self.correct)
         )
+
+
+@no_auto_store()
+class SelfReferencingRecord(Record):
+    other_record = SubRecord(SELF)
+
+
+class TestSelfReference(TestCase):
+    """Circular references, including self references, aren't supported at this time"""
+    def test_circular_dependency_triggers_error(self):
+        self.assertRaises(SourceGenerationError, classes_source, [SelfReferencingRecord])

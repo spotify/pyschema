@@ -24,34 +24,90 @@ def to_python_source(classes, indent=DEFAULT_INDENT):
     return header_source() + "\n" + classes_source(classes, indent)
 
 
-def to_python_package(classes, target_folder, indent=DEFAULT_INDENT):
-    default_namespace = '__init__'
-    class_graph = CachedGraphTraverser()
+class PackageBuilder(object):
+    def __init__(self, target_folder, parent_package, indent=DEFAULT_INDENT):
+        self.target_folder = target_folder
+        self.parent_package = parent_package
+        self.indent = indent
 
-    all_classes = set(classes)
-    for c in classes:
-        referenced_schemas = class_graph.find_descendents(c)
-        all_classes |= set(referenced_schemas)
-
-    namespace_cluster = defaultdict(set)
-    for c in all_classes:
+    def get_namespace(self, schema):
         try:
-            namespace = c._namespace
+            namespace = schema._namespace
         except AttributeError:
-            namespace = default_namespace
-        namespace_cluster[namespace].add(c)
+            namespace = None
+        return namespace
 
-    print namespace_cluster
+    def get_namespace_clusters(self, all_classes):
+        namespace_cluster = defaultdict(set)
+        for c in all_classes:
+            namespace = self.get_namespace(c)
+            namespace_cluster[namespace].add(c)
+        return namespace_cluster
 
-    for namespace, classes in namespace_cluster.iteritems():
-        key = namespace.split('.')
-        output_file = os.path.join(target_folder, *key) + '.py'
-        output_dir = os.path.join(target_folder, os.path.dirname(output_file))
+    def format_definitions(self, classes):
+        return "\n\n".join([_class_source(c, self.indent) for c in classes])
+
+    def write_namespace_file(self, namespace, module_code):
+        if namespace is None:
+            key = ['__init__']
+        else:
+            key = namespace.split('.')
+        output_file = os.path.join(self.target_folder, *key) + '.py'
+        output_dir = os.path.join(self.target_folder, os.path.dirname(output_file))
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+
         with open(output_file, 'w') as out_fn:
-            out_fn.write(to_python_source(list(classes)))
-            #TODO, need to make sure we don't parse references here, need to call a simpler version
+            out_fn.write(module_code)
+
+    def format_imports(self, imported_classes):
+        imported_namespaces = self.get_namespace_clusters(imported_classes)
+        lines = []
+        for namespace, schemas in imported_namespaces.iteritems():
+            if self.parent_package:
+                if namespace:
+                    module = "{}.{}".format(self.parent_package, namespace)
+                else:
+                    module = self.parent_package
+            else:
+                if not namespace:
+                    module = "."
+                else:
+                    module = namespace
+            class_part = ", ".join(s.__name__ for s in schemas)
+            lines.append("from {} import {}".format(module, class_part))
+        return "\n".join(lines) + "\n\n"
+
+    def from_classes_with_refs(self, classes):
+        class_graph = CachedGraphTraverser()
+
+        all_classes = set(classes)
+        for c in classes:
+            referenced_schemas = class_graph.find_descendents(c)
+            all_classes |= set(referenced_schemas)
+
+        namespace_cluster = self.get_namespace_clusters(all_classes)
+
+        ordered_schemas = class_graph.get_reference_ordered_schemas(all_classes)
+
+        for namespace, classes in namespace_cluster.iteritems():
+            inlined_classes = [c for c in ordered_schemas if c in classes]
+            imported_classes = set()
+
+            for inlined in inlined_classes:
+                all_referenced = class_graph.find_descendents(inlined)
+                imported_classes |= set([c for c in all_referenced if c not in inlined_classes])
+
+            module_code = (
+                header_source() +
+                self.format_imports(imported_classes) +
+                self.format_definitions(inlined_classes)
+            )
+            self.write_namespace_file(namespace, module_code)
+
+
+def to_python_package(classes, target_folder, parent_package=None, indent=DEFAULT_INDENT):
+    PackageBuilder(target_folder, parent_package, indent).from_classes_with_refs(classes)
 
 
 def classes_source(classes, indent=DEFAULT_INDENT):

@@ -156,36 +156,52 @@ class TestSelfReference(TestCase):
 
 @no_auto_store()
 class ChildWithNameSpace(Record):
-    _namespace = 'test.pyshema_test_child'
+    _namespace = "test.pyschema_test_child"
     a = Integer()
 
 
 @no_auto_store()
+class ChildWithoutNamespace(Record):
+    pass
+
+
+@no_auto_store()
 class ParentWithNameSpace(Record):
-    _namespace = 'pyschema_test_parent'
+    _namespace = "pyschema_test_parent"
     child = SubRecord(ChildWithNameSpace)
+    other = SubRecord(ChildWithoutNamespace)
 
 
 class TestPythonPackageGeneration(TestCase):
     def setUp(self):
         self.tmp_path = tempfile.mkdtemp()
 
+    def get_file_content(self, relative_path):
+        return open(os.path.join(self.tmp_path, relative_path)).read()
+
     def tearDown(self):
         shutil.rmtree(self.tmp_path)
 
     def test_package_generation_no_namespace(self):
         to_python_package([Parent], self.tmp_path)
-        src = open(os.path.join(self.tmp_path, '__init__.py')).read()
-        expected_src = header_source() + '\n' + TestSubRecord.correct
+        src = self.get_file_content("__init__.py")
+        expected_src = header_source() + "\n" + TestSubRecord.correct
         self.assertEquals(src, expected_src)
 
     def test_package_generation_namespace(self):
         to_python_package([FooRecord], self.tmp_path)
-        src = open(os.path.join(self.tmp_path, 'my/foo/bar.py')).read()
-        expected_src = header_source() + '\n' + TestSourceConversion.correct
+        src = self.get_file_content("my/foo/bar.py")
+        expected_src = header_source() + "\n" + TestSourceConversion.correct
         self.assertEquals(src, expected_src)
 
         #TODO, verify __init__ files
 
     def test_multiple_namespaces(self):
-        to_python_package([FooRecord], self.tmp_path)
+        to_python_package([ParentWithNameSpace], self.tmp_path)
+        src1 = self.get_file_content("pyschema_test_parent.py")
+        src2 = self.get_file_content("test/pyschema_test_child.py")
+
+        print "Start file 1"
+        print src1
+        print "Start file 2"
+        print src2

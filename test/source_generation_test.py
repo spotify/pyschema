@@ -17,6 +17,7 @@ import subprocess
 import os
 import shutil
 import tempfile
+import re
 from unittest import TestCase
 from pyschema import Record, Text, Integer, no_auto_store, Enum, SubRecord
 from pyschema.source_generation import (
@@ -193,15 +194,16 @@ class TestPythonPackageGeneration(TestCase):
         src = self.get_file_content("my/foo/bar.py")
         expected_src = header_source() + "\n" + TestSourceConversion.correct
         self.assertEquals(src, expected_src)
-
         #TODO, verify __init__ files
+
+    def assertContainsOnlyClasses(self, code_string, class_names):
+        matches = re.finditer(r"class (\w+)\(", code_string)
+        found_declarations = set([m.group(1) for m in matches])
+        self.assertEquals(found_declarations, set(class_names))
 
     def test_multiple_namespaces(self):
         to_python_package([ParentWithNameSpace], self.tmp_path)
         src1 = self.get_file_content("pyschema_test_parent.py")
+        self.assertContainsOnlyClasses(src1, ["ParentWithNameSpace", "ChildWithSameNamespace"])
         src2 = self.get_file_content("test/pyschema_test_child.py")
-
-        print "Start file 1"
-        print src1
-        print "Start file 2"
-        print src2
+        self.assertContainsOnlyClasses(src2, ["ChildWithOwnNameSpace"])

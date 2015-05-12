@@ -53,12 +53,23 @@ class PackageBuilder(object):
         else:
             key = namespace.split('.')
         output_file = os.path.join(self.target_folder, *key) + '.py'
-        output_dir = os.path.join(self.target_folder, os.path.dirname(output_file))
+        output_dir = os.path.dirname(output_file)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
         with open(output_file, 'w') as out_fn:
             out_fn.write(module_code)
+
+    def write_init_files(self):
+        def touch_init_file_in_folder(folder):
+            path = os.path.join(folder, '__init__.py')
+            if not os.path.exists(path):
+                open(path, 'w').close()
+
+        touch_init_file_in_folder(self.target_folder)
+        for root, dirs, _ in os.walk(self.target_folder):
+            for d in dirs:
+                touch_init_file_in_folder(os.path.join(root, d))
 
     def format_imports(self, imported_classes):
         if not imported_classes:
@@ -85,7 +96,7 @@ class PackageBuilder(object):
 
         all_classes = set(classes)
         for c in classes:
-            referenced_schemas = class_graph.find_descendents(c)
+            referenced_schemas = class_graph.find_descendants(c)
             all_classes |= set(referenced_schemas)
 
         namespace_cluster = self.get_namespace_clusters(all_classes)
@@ -97,7 +108,7 @@ class PackageBuilder(object):
             imported_classes = set()
 
             for inlined in inlined_classes:
-                all_referenced = class_graph.find_descendents(inlined)
+                all_referenced = class_graph.find_descendants(inlined)
                 imported_classes |= set([c for c in all_referenced if c not in inlined_classes])
 
             module_code = (
@@ -106,6 +117,7 @@ class PackageBuilder(object):
                 self.format_definitions(inlined_classes)
             )
             self.write_namespace_file(namespace, module_code)
+            self.write_init_files()
 
 
 def to_python_package(classes, target_folder, parent_package=None, indent=DEFAULT_INDENT):
@@ -116,7 +128,7 @@ def classes_source(classes, indent=DEFAULT_INDENT):
     all_classes = set(classes)
     class_graph = CachedGraphTraverser()
     for c in classes:
-        referenced_schemas = class_graph.find_descendents(c)
+        referenced_schemas = class_graph.find_descendants(c)
         all_classes |= set(referenced_schemas)
 
     ordered = class_graph.get_reference_ordered_schemas(all_classes)
@@ -168,48 +180,49 @@ def _class_source(schema, indent):
 
 class CachedGraphTraverser(object):
     def __init__(self):
-        self.descendents = {}
+        self.descendants = {}
         self.started = set()
 
-    def find_descendents(self, a):
-        if a in self.descendents:
+    def find_descendants(self, a):
+        if a in self.descendants:
             # fetch from cache
-            return self.descendents[a]
+            return self.descendants[a]
         self.started.add(a)
         subs = set()
         if pyschema.ispyschema(a):
             for _, field in a._fields.iteritems():
-                subs |= self.find_descendents(field)
-            self.descendents[a] = subs
+                subs |= self.find_descendants(field)
+            self.descendants[a] = subs
         elif isinstance(a, types.List):
-            subs |= self.find_descendents(a.field_type)
+            subs |= self.find_descendants(a.field_type)
         elif isinstance(a, types.Map):
-            subs |= self.find_descendents(a.value_type)
+            subs |= self.find_descendants(a.value_type)
         elif isinstance(a, types.SubRecord):
             subs.add(a._schema)
-            if a not in self.started:  # otherwise there is a circular reference
-                subs |= self.find_descendents(a._schema)
+            if a._schema not in self.started:  # otherwise there is a circular reference
+                subs |= self.find_descendants(a._schema)
         self.started.remove(a)
         return subs
 
     def get_reference_ordered_schemas(self, schema_set):
         for schema in schema_set:
-            self.find_descendents(schema)
-        descendents = copy.deepcopy(self.descendents)  # a working copy
+            self.find_descendants(schema)
+        descendants = copy.deepcopy(self.descendants)  # a working copy
 
         ordered_output = []
-        while descendents:
+        while descendants:
             leaves = []
-            for root, referenced in descendents.iteritems():
+            for root, referenced in descendants.iteritems():
                 if len(referenced) == 0:
                     leaves.append(root)
+
             if not leaves:
                 raise SourceGenerationError("Circular reference in input schemas, aborting")
             ordered_output += leaves
             for leaf in leaves:
                 # remove all leaves
-                descendents.pop(leaf)
-                for root, referenced in descendents.iteritems():
+                descendants.pop(leaf)
+                for root, referenced in descendants.iteritems():
                     if leaf in referenced:
                         referenced.remove(leaf)
         return ordered_output

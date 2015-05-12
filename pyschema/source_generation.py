@@ -2,6 +2,7 @@ import copy
 from pyschema import types
 import pyschema
 import os
+import sys
 from collections import defaultdict
 
 DEFAULT_INDENT = " " * 4
@@ -103,13 +104,15 @@ class PackageBuilder(object):
 
         ordered_schemas = class_graph.get_reference_ordered_schemas(all_classes)
 
+        # Since we don't want to use the previous cached results we create a new instance
+        one_stack_level_class_graph = CachedGraphTraverser()
         for namespace, classes in namespace_cluster.iteritems():
             inlined_classes = [c for c in ordered_schemas if c in classes]
             imported_classes = set()
 
             for inlined in inlined_classes:
-                all_referenced = class_graph.find_descendants(inlined)
-                imported_classes |= set([c for c in all_referenced if c not in inlined_classes])
+                direct_references = child_only_class_graph.find_descendants(inlined, max_depth=1)
+                imported_classes |= set([c for c in direct_references if c not in inlined_classes])
 
             module_code = (
                 header_source() +
@@ -183,25 +186,26 @@ class CachedGraphTraverser(object):
         self.descendants = {}
         self.started = set()
 
-    def find_descendants(self, a):
+    def find_descendants(self, a, max_depth=sys.getrecursionlimit()):
         if a in self.descendants:
             # fetch from cache
             return self.descendants[a]
         self.started.add(a)
         subs = set()
-        if pyschema.ispyschema(a):
-            for _, field in a._fields.iteritems():
-                subs |= self.find_descendants(field)
-            self.descendants[a] = subs
-        elif isinstance(a, types.List):
-            subs |= self.find_descendants(a.field_type)
-        elif isinstance(a, types.Map):
-            subs |= self.find_descendants(a.value_type)
-        elif isinstance(a, types.SubRecord):
-            subs.add(a._schema)
-            if a._schema not in self.started:  # otherwise there is a circular reference
-                subs |= self.find_descendants(a._schema)
-        self.started.remove(a)
+        if max_depth > 0:
+            if pyschema.ispyschema(a):
+                for _, field in a._fields.iteritems():
+                    subs |= self.find_descendants(field, max_depth)
+                self.descendants[a] = subs
+            elif isinstance(a, types.List):
+                subs |= self.find_descendants(a.field_type, max_depth)
+            elif isinstance(a, types.Map):
+                subs |= self.find_descendants(a.value_type, max_depth)
+            elif isinstance(a, types.SubRecord):
+                subs.add(a._schema)
+                if a._schema not in self.started:  # otherwise there is a circular reference
+                    subs |= self.find_descendants(a._schema, max_depth-1)
+            self.started.remove(a)
         return subs
 
     def get_reference_ordered_schemas(self, schema_set):

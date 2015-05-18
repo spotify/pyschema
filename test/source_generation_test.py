@@ -96,11 +96,14 @@ class TestFooRecord(AutoTest, TestCase):
 
 @no_auto_store()
 class EnumRecord(Record):
-    e = Enum(["HELLO", "GOODBYE"])
+    e = Enum(["HELLO", "GOODBYE"], name="MyEnum")
 
 
 class TestEnumRecord(AutoTest, TestCase):
     schema_classes = [EnumRecord]
+
+    def test_name_is_preserved(self):
+        self.assertIn("name='MyEnum'", to_python_source(self.schema_classes))
 
 
 class DependentRecords(AutoTest, TestCase):

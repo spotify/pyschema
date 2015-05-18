@@ -105,7 +105,8 @@ class PackageBuilder(object):
         ordered_schemas = class_graph.get_reference_ordered_schemas(all_classes)
 
         # Since we don't want to use the previous cached results we create a new instance
-        one_stack_level_class_graph = CachedGraphTraverser()
+        # This CachedGraphTraverser will only keep one-child depth for its find_descendants
+        child_only_class_graph = CachedGraphTraverser()
         for namespace, classes in namespace_cluster.iteritems():
             inlined_classes = [c for c in ordered_schemas if c in classes]
             imported_classes = set()

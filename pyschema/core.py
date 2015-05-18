@@ -57,7 +57,7 @@ except ImportError:
     from ordereddict import OrderedDict
 
 import warnings
-import types
+import types   # absolute import, this is the python standard library types
 try:
     import simplejson as json
 except ImportError:
@@ -75,6 +75,7 @@ class ParseError(Exception):
 class SchemaStore(object):
     def __init__(self):
         self._schema_map = {}
+        self._enum_map = {}
 
     def __str__(self):
         return str(self._schema_map.keys())
@@ -89,6 +90,24 @@ class SchemaStore(object):
         if '.' in full_name and schema.__name__ not in self._schema_map:
             self._force_add(schema.__name__, schema, _bump_stack_level)
         return schema
+
+    def add_enum(self, enum_definition):
+        new_values_set = set(enum_definition.values)
+        old_values_set = self._enum_map.get(enum_definition.name)
+
+        if old_values_set is not None and new_values_set != old_values_set:
+            warnings.warn(
+                "Enum {!r} overwritten! Was: {}, Overwritten by: {}".format(
+                    enum_definition.name,
+                    old_values_set,
+                    new_values_set
+                )
+            )
+
+        if enum_definition.name is not None:
+            self._enum_map[enum_definition.name] = enum_definition.values
+        # return the definition to allow the method to be used as a decorator
+        return enum_definition
 
     def _force_add(self, used_name, schema, _bump_stack_level=False):
         existing = self._schema_map.get(used_name, None)
@@ -119,13 +138,30 @@ class SchemaStore(object):
             last_name = record_name.split('.')[-1]
             return self._schema_map[last_name]
 
+    def get_enum(self, name):
+        return self._enum_map[name]
+
     def clear(self):
         self._schema_map.clear()
+        self._enum_map.clear()
 
     def clone(self):
         r = SchemaStore()
         r._schema_map = self._schema_map.copy()
+        r._enum_map = self._enum_map.copy()
+
         return r
+
+    def has_schema(self, name):
+        if name in self._schema_map:
+            return True
+        if "." in name:
+            basename = name.split(".")[-1]
+            return basename in self._schema_map
+        return False
+
+    def has_enum(self, name):
+        return name in self._enum_map
 
     def __contains__(self, schema):
         return schema in self._schema_map.values()

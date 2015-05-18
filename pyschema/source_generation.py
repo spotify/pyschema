@@ -25,6 +25,24 @@ def to_python_source(classes, indent=DEFAULT_INDENT):
     return header_source() + "\n" + classes_source(classes, indent)
 
 
+RESERVED_KEYWORDS = [
+    "and", "del", "from", "not", "while", "as", "elif",
+    "global", "or", "with", "assert", "else", "if",
+    "pass", "yield", "break", "except", "import",
+    "print", "class", "exec", "in", "raise", "continue",
+    "finally", "is", "return", "def", "for", "lambda", "try"
+]
+
+
+def make_safe(package_name):
+    parts = package_name.split(".")
+    for kw in RESERVED_KEYWORDS:
+        while kw in parts:
+            i = parts.index(kw)
+            parts[i] = kw + "_"
+    return ".".join(parts)
+
+
 class PackageBuilder(object):
     def __init__(self, target_folder, parent_package, indent=DEFAULT_INDENT):
         self.target_folder = target_folder
@@ -33,7 +51,7 @@ class PackageBuilder(object):
 
     def get_namespace(self, schema):
         try:
-            namespace = schema._namespace
+            namespace = make_safe(schema._namespace)
         except AttributeError:
             namespace = None
         return namespace
@@ -49,7 +67,7 @@ class PackageBuilder(object):
         return "\n\n".join([_class_source(c, self.indent) for c in classes])
 
     def write_namespace_file(self, namespace, module_code):
-        if namespace is None:
+        if not namespace:
             key = ['__init__']
         else:
             key = namespace.split('.')
@@ -92,6 +110,14 @@ class PackageBuilder(object):
             lines.append("from {} import {}".format(module, class_part))
         return "\n".join(lines) + "\n\n"
 
+    def _get_namespace_prefixes(self, namespaces):
+        prefixes = []
+        for n in namespaces:
+            if n:
+                parts = n.split(".")
+                prefixes.append(".".join(parts[:-1]))
+        return prefixes
+
     def from_classes_with_refs(self, classes):
         class_graph = CachedGraphTraverser()
 
@@ -101,7 +127,7 @@ class PackageBuilder(object):
             all_classes |= set(referenced_schemas)
 
         namespace_cluster = self.get_namespace_clusters(all_classes)
-
+        parent_namespaces = self._get_namespace_prefixes(namespace_cluster.keys())
         ordered_schemas = class_graph.get_reference_ordered_schemas(all_classes)
 
         # Since we don't want to use the previous cached results we create a new instance
@@ -120,7 +146,12 @@ class PackageBuilder(object):
                 self.format_imports(imported_classes) +
                 self.format_definitions(inlined_classes)
             )
-            self.write_namespace_file(namespace, module_code)
+            if namespace not in parent_namespaces:
+                filename = namespace
+            else:
+                filename = "{}.{}".format(namespace, "__init__")
+
+            self.write_namespace_file(filename, module_code)
             self.write_init_files()
 
 

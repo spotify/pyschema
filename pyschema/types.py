@@ -15,7 +15,7 @@ import datetime
 
 import core
 import copy
-from core import ParseError, Field
+from core import ParseError, Field, auto_store, PySchema
 import binascii
 try:
     from collections import OrderedDict
@@ -131,9 +131,13 @@ class List(Field):
 class Enum(Field):
     _field_type = Text()  # don't change
 
-    def __init__(self, values, **kwargs):
+    def __init__(self, values, name=None, **kwargs):
         super(Enum, self).__init__(**kwargs)
         self.values = set(values)
+        self.name = name
+
+        if name is not None and PySchema.auto_register:
+            auto_store.add_enum(self)
 
     def dump(self, obj):
         if obj not in self.values:
@@ -154,10 +158,10 @@ class Enum(Field):
         return super(Enum, self).is_similar_to(other) and self.values == other.values
 
     def repr_vars(self):
-        return ordereddict_push_front(
-            super(Enum, self).repr_vars(),
-            "values",
-            self.values
+        return OrderedDict([
+            ("values", self.values),
+            ("name", repr(self.name))
+        ] + super(Enum, self).repr_vars().items()
         )
 
 

@@ -118,12 +118,12 @@ class ParseMaps(ParseThreeIncludingNullable):
 class ParseEnum(TestCase):
     def test_can_parse_field(self):
         field = avro_schema_parser.AvroSchemaParser()._parse_complex(
-            {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsNotSupportedYet'},
+            {u'symbols': [u'FOO', u'BAR'], u'type': u'enum', u'name': u'EnumNameIsSupported'},
             None
         )()
         self.assertTrue(
             field.is_similar_to(
-                pyschema.Enum(["FOO", "BAR"], nullable=False)
+                pyschema.Enum(["FOO", "BAR"], name="EnumNameIsSupported", nullable=False)
             )
         )
 
@@ -509,7 +509,8 @@ namespace_subrecord_schema = r"""{
       "type" : {
           "type" : "record",
           "name" : "SubRecordNoNamespace",
-          "fields" : []
+          "fields" : [
+          ]
       }
     },
     {
@@ -563,3 +564,27 @@ class TestAvroDefaultValues(TestCase):
         self.assertEqual(schema.bar.default, 0)
         self.assertTrue(isinstance(schema.floatie.default, float))
         self.assertTrue(isinstance(schema.bar.default, int))
+
+
+repeated_enum_schema = r"""{
+  "type" : "record",
+  "name" : "ParentEnumRecord",
+  "namespace" : "pyschema.test",
+  "fields" : [ {
+    "name" : "enum_field",
+    "type" : {
+      "type" : "enum",
+      "name" : "SomeEnum",
+      "symbols" : [ "foo", "bar" ]
+    }
+  }, {
+    "name" : "second_enum_field",
+    "type" : "SomeEnum"
+  }]
+}
+"""
+
+
+class TestRepeatedEnumParsing(TestCase):
+    def test_can_parse_enum_reference(self):
+        avro_schema_parser.parse_schema_string(repeated_enum_schema)

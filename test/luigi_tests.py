@@ -9,19 +9,17 @@ except ImportError:
     import json
 
 
-class FooRecord(pyschema.Record):
-    foo = Text()
-    bar = Integer()
-
-
 class TestMRWriter(BaseTest):
     def setUp(self):
-        pass
+        class FooRecord(pyschema.Record):
+            foo = Text()
+            bar = Integer()
+        self.FooRecord = FooRecord
 
     def seq(self):
-        yield FooRecord(foo="Hej", bar=10)
-        yield FooRecord(foo="Moo", bar=None)
-        yield FooRecord(foo="Tjaba tjena", bar=3)
+        yield self.FooRecord(foo="Hej", bar=10)
+        yield self.FooRecord(foo="Moo", bar=None)
+        yield self.FooRecord(foo="Tjaba tjena", bar=3)
 
     def _generic_writer_tests(self, writer, hard_coded_type=None):
         output = StringIO()
@@ -52,7 +50,7 @@ class TestMRWriter(BaseTest):
             ("FooRecord",) * 3
         )
         for r in output_records:
-            self.assertTrue(isinstance(r, FooRecord))
+            self.assertTrue(isinstance(r, self.FooRecord))
 
         obj = json.loads(output_lines[0])
         self.recursive_compare(

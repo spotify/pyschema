@@ -22,7 +22,7 @@ import re
 from pyschema.types import Integer, Text, Float, Boolean, Date, DateTime
 
 
-Integer.pg_type = "INT"
+Integer.pg_type = "BIGINT"
 Text.pg_type = "TEXT"
 Float.pg_type = "FLOAT"
 Boolean.pg_type = "BOOLEAN"

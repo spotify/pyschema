@@ -372,3 +372,15 @@ class TestNamespaceMigration(TestCase):
         legacy_data_with_record_class = ('{"$schema": "NamespacedMainRecord", "sub_record":'
                                          '{"NamespacedSubRecord": {"a": {"string": "test"}}}}')
         pyschema_extensions.avro.loads(legacy_data_with_record_class, record_store=test_store)
+
+
+class TestEnumTypeName(TestCase):
+    def test_no_name(self):
+        # when no name is declared, use the dummy "ENUM" name
+        val = Enum(["FOO", "BAR"], nullable=True).avro_dump("FOO")
+        self.assertIn("ENUM", val)
+
+    def test_name(self):
+        val = Enum(["FOO", "BAR"], nullable=True, name="EType").avro_dump("BAR")
+        self.assertIn("EType", val)
+        self.assertNotIn("ENUM", val)

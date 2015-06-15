@@ -146,9 +146,14 @@ class ListMixin:
             ]
 
 
-### `Enum` extensions
 @Enum.mixin
 class EnumMixin:
+    @property
+    def avro_type_name(self):
+        if self.name is None:
+            return "ENUM"
+        return self.name
+
     def simplified_avro_type_schema(self, state):
         return {
             "type": "enum",

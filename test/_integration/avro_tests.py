@@ -67,6 +67,11 @@ class EnumRecord(Record):
 
 
 @pyschema.no_auto_store()
+class NamedEnumRecord(Record):
+    e = Enum(["FOO", "BAR"], name="EType")
+
+
+@pyschema.no_auto_store()
 class NonnullableEnumRecord(Record):
     e = Enum(["FOO", "BAR"], nullable=False)
 
@@ -219,6 +224,10 @@ class TestExternalAvroValidation(TestCase):
     def test_enum(self):
         record = EnumRecord(e="FOO")
         self.assertTrue(avro_roundtrip(EnumRecord, record))
+
+    def test_named_enum(self):
+        record = NamedEnumRecord(e="FOO")
+        self.assertTrue(avro_roundtrip(NamedEnumRecord, record))
 
     def test_nonnullable_enum(self):
         record = NonnullableEnumRecord(e="FOO")

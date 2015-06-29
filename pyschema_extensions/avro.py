@@ -315,7 +315,8 @@ def from_json_compatible(schema, dct):
     for key in dct:
         field_type = schema._fields.get(key)
         if field_type is None:
-            raise core.ParseError("Unexpected field encountered in line for record %s: %r" % (schema.__name__, key))
+            warnings.warn("Unexpected field encountered in line for record %s: %r" % (schema.__name__, key))
+            continue
         kwargs[key] = field_type.avro_load(dct[key])
 
     return schema(**kwargs)

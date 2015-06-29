@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 import datetime
-
+import warnings
 from unittest import TestCase
 from common import BaseTest
 import pyschema
@@ -384,3 +384,18 @@ class TestEnumTypeName(TestCase):
         val = Enum(["FOO", "BAR"], nullable=True, name="EType").avro_dump("BAR")
         self.assertIn("EType", val)
         self.assertNotIn("ENUM", val)
+
+
+class TestExtraFields(TestCase):
+    def test_ignore_extra(self):
+        test_store = pyschema.core.SchemaStore()
+
+        @test_store.add_record
+        @no_auto_store()
+        class EmptySchema(Record):
+            pass
+
+        data = '{"$schema": "EmptySchema", "not_in_schema": 1}'
+        with warnings.catch_warnings(record=True) as ws:
+            pyschema_extensions.avro.loads(data, record_store=test_store)
+        self.assertEquals(len(ws), 1)

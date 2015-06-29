@@ -421,10 +421,14 @@ class Record(object):
             # is to prevent accidental misuse of a changed schema
             raise TypeError('Non-keyword arguments not allowed'
                             ' when initializing Records')
-        for k, field_type in self._fields.iteritems():
-            object.__setattr__(self, k, field_type.default_value())
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
+
+        for k, field_type in self._fields.items():
+            if k in kwargs:
+                value = kwargs.get(k)
+            else:
+                value = field_type.default_value()
+
+            object.__setattr__(self, k, value)
 
     def __setattr__(self, name, value):
         if name not in self._fields:

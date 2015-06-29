@@ -235,7 +235,9 @@ class Date(Text):
 
     def load(self, obj):
         try:
-            return datetime.datetime.strptime(obj, "%Y-%m-%d").date()
+            # This is much faster than calling strptime
+            (year, month, day) = obj.split('-')
+            return datetime.date(int(year), int(month), int(day))
         except ValueError:
             raise ValueError("Invalid value for Date field: %r" % obj)
 

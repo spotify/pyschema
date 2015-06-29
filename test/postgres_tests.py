@@ -19,7 +19,7 @@ class MyItem(Record):
 class TestPostgres(TestCase):
     def test_create_statement(self):
         statement = postgres.create_statement(MyItem, 'my_table')
-        self.assertEquals("CREATE TABLE my_table (name TEXT, value INT, dec FLOAT, flag BOOLEAN, date DATE, datehour TIMESTAMP WITHOUT TIME ZONE)", statement)
+        self.assertEquals("CREATE TABLE my_table (name TEXT, value BIGINT, dec FLOAT, flag BOOLEAN, date DATE, datehour TIMESTAMP WITHOUT TIME ZONE)", statement)
 
         statement = postgres.create_statement(MyItem)
-        self.assertEquals("CREATE TABLE my_item (name TEXT, value INT, dec FLOAT, flag BOOLEAN, date DATE, datehour TIMESTAMP WITHOUT TIME ZONE)", statement)
+        self.assertEquals("CREATE TABLE my_item (name TEXT, value BIGINT, dec FLOAT, flag BOOLEAN, date DATE, datehour TIMESTAMP WITHOUT TIME ZONE)", statement)

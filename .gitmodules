@@ -1,4 +1,4 @@
 [submodule "docs/gh-pages"]
 	path = docs/gh-pages
-	url = git@github.com:spotify/pyschema.git
+	url = ../pyschema.git
 	branch = gh-pages

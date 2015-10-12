@@ -72,6 +72,20 @@ class ParseError(Exception):
     pass
 
 
+class InvalidSchemaSpecification(object):
+    """
+    Utility class that can be used to raise an exception on schema usage.
+
+    This is used in the schema store as a placeholder for invalid schemas. Instead of raising when a schema is
+    registered in the store, something that happens on import, we use this class to raise on usage.
+    """
+    def __init__(self, exception_msg):
+        self.exception_msg = exception_msg
+
+    def __getattr__(self, item):
+        raise ValueError(self.exception_msg)
+
+
 class SchemaStore(object):
     def __init__(self):
         self._schema_map = {}
@@ -86,8 +100,9 @@ class SchemaStore(object):
             Can be used as a class decorator
         """
         full_name = get_full_name(schema)
-        self._force_add(full_name, schema, _bump_stack_level)
-        if '.' in full_name and schema.__name__ not in self._schema_map:
+        has_namespace = '.' in full_name
+        self._force_add(full_name, schema, _bump_stack_level, _raise_on_existing=has_namespace)
+        if has_namespace and schema.__name__ not in self._schema_map:
             self._force_add(schema.__name__, schema, _bump_stack_level)
         return schema
 
@@ -109,9 +124,9 @@ class SchemaStore(object):
         # return the definition to allow the method to be used as a decorator
         return enum_definition
 
-    def _force_add(self, used_name, schema, _bump_stack_level=False):
+    def _force_add(self, used_name, schema, _bump_stack_level=False, _raise_on_existing=False):
         existing = self._schema_map.get(used_name, None)
-        if existing:
+        if existing and existing != schema:
             full_name = get_full_name(schema)
             explanation = "(actually {0})".format() if full_name != used_name else ""
 
@@ -122,6 +137,16 @@ class SchemaStore(object):
                         prev_module=existing.__module__,
                         new_module=schema.__module__),
                 stacklevel=4 if _bump_stack_level else 3)
+
+            if _raise_on_existing:
+                if not isinstance(existing, InvalidSchemaSpecification):
+                    schema = InvalidSchemaSpecification(
+                        'Attempted to access data from a dubious schema specification. '
+                        'The schema for: {used_name} was provided by both {existing} and {new}'
+                        .format(used_name=used_name, existing=existing, new=schema))
+                else:
+                    schema = existing
+
         self._schema_map[used_name] = schema
 
     def get(self, record_name):

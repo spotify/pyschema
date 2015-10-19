@@ -65,6 +65,7 @@ class SomeAvroRecord(Record):
     s = SubRecord(TextRecord, nullable=False)
     t = SubRecord(TextRecord2, nullable=False)
     u = SubRecord(TextRecord3)
+    v = SubRecord(TextRecord3) 
 
 
 hand_crafted_schema_dict = {
@@ -125,6 +126,9 @@ hand_crafted_schema_dict = {
              "type": "record",
              "namespace": "blah.blah",
              "fields": [{"name": "t", "type": ["null", "string"], "default": None}]}],
+             "default": None
+        },
+        {"name": "v", "type": ["null", "blah.blah.TextRecord3"],
              "default": None
         }
     ]
@@ -188,7 +192,7 @@ class TestAvro(BaseTest):
         self.assertEquals(
             names,
             ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-             "n", "o", "p", "q", "r", "s", "t", "u")
+             "n", "o", "p", "q", "r", "s", "t", "u", "v")
         )
         self.assertEquals(schema["type"], "record")
         self.assertEquals(schema["name"], "SomeAvroRecord")
@@ -228,6 +232,7 @@ class TestAvro(BaseTest):
             s=TextRecord(t="ace"),
             t=TextRecord2(t="look"),
             u=TextRecord3(t="dog"),
+            v=TextRecord3(t="namespaceTest")
         )
         avro_string = pyschema_extensions.avro.dumps(s)
         new_s = pyschema_extensions.avro.loads(
@@ -260,6 +265,7 @@ class TestAvro(BaseTest):
         self.assertEquals(new_s.t.t, u"look")
         self.assertEquals(new_s.u.t, u"dog")
         self.assertEquals(new_s.u._namespace, u"blah.blah")
+        self.assertEquals(new_s.v._namespace, u"blah.blah")
 
     def test_unset_list(self):
         @no_auto_store()

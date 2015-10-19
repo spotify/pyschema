@@ -256,15 +256,14 @@ def get_schema_dict(record, state=None):
     state = state or SchemaGeneratorState()
 
     full_name = core.get_full_name(record)
+    if full_name in state.declared_records:
+        return full_name
+    state.declared_records.add(full_name)
+
     if '.' in full_name:
-        namespace, record_name = full_name.rsplit('.', 1)
+        namespace, _ = full_name.rsplit('.', 1)
     else:
         namespace = None
-        record_name = record._schema_name
-
-    if record_name in state.declared_records:
-        return record_name
-    state.declared_records.add(record_name)
 
     avro_record = {
         "type": "record",
